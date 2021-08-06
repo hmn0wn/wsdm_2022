@@ -162,7 +162,7 @@ acc_test, time_training, time_inference, time_inference_linear, time_total, num_
         niter=niter,
         gamma=gamma,
         data_name=dataset_name,
-        load_check=True,
+        load_check=False,
         dim=dim,
         alpha=alpha,
         maxepochs=mepoch)
