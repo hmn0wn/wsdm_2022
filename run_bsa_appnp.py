@@ -10,8 +10,56 @@ from bsa_appnp.training import traininng
 from bsa_appnp.predict import BSA
 import gc
 from memory_profiler import profile, memory_usage
+import scipy.sparse as sp
+import struct
+
 main_seed = 42
 tf.random.set_seed(0)
+
+
+if True:
+    from predictc import BSAcpp
+else:
+    #vscode cant import cython modules in debug mode
+    class BSAcpp:
+        pass
+
+
+def graphsave(adj, dir, to_sort=False):
+    if (sp.isspmatrix_csr(adj)):
+        el = adj.indices
+        pl = adj.indptr
+
+        EL = np.array(el, dtype=np.uint32)
+        PL = np.array(pl, dtype=np.uint32)
+
+        EL_re = []
+        if to_sort:
+            for i in range(1, PL.shape[0]):
+                #EL_re += sorted(EL[PL[i - 1]:PL[i]], key=lambda x: PL[x + 1] - PL[x])
+                EL_re += sorted(EL[PL[i - 1]:PL[i]])
+        else:
+            EL_re = EL
+
+        EL_re = np.asarray(EL_re, dtype=np.uint32)
+
+        print("EL:", EL_re.shape, " size: ", EL_re.size)
+        f1 = open(dir + 'el.txt', 'wb')
+        for i in EL_re:
+            m = struct.pack('I', i)
+            f1.write(m)
+        f1.close()
+
+        print("PL:", PL.shape, " size: ", PL.size)
+        f2 = open(dir + 'pl.txt', 'wb')
+        for i in PL:
+            m = struct.pack('I', i)
+            f2.write(m)
+        f2.close()
+        return EL_re.size, PL.size
+    else:
+        print("Format Error!")
+
 
 #@profile(precision=10)
 def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha, maxepochs, sparse=True, tau=100):
@@ -122,16 +170,48 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
 
     inference_time_batch = end - start
     Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
-    Z, linear_time = \
-        BSA(A=Ah,
-            b=(1 - alpha) * Z,
-            x=Z,
-            niter=tau,
-            P=ED_mat,
-            all_batches=all_batches,
-            epsilon=0.1,
-            gamma=0.3,
-            seed=main_seed)
+
+    if False:
+        adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
+        sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
+
+    if False:
+        n, m = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
+        n = n - 1 
+    else:
+        if data_name=="cora_full":
+            n, m = 18800, 125370
+        if data_name=="pubmed":
+            n, m = 19717, 88648
+        if data_name=='reddit':
+            n, m = 232965, 23446803
+        if data_name=='reddit':
+            n, m = 232965, 114615892
+        if data_name=='citeseer':
+            n, m = 2110, 7388
+
+    all_batches = np.array(all_batches)
+   
+    if False:
+        
+        Z, linear_time = \
+            BSA(A=Ah,
+                b=(1 - alpha) * Z,
+                x=Z,
+                niter=tau,
+                P=ED_mat,
+                all_batches=all_batches,
+                epsilon=0.1,
+                gamma=0.3,
+                seed=main_seed)
+    else:
+        linear_time = 0
+        #Z, linear_time = \
+        py_bsa = BSAcpp()
+        py_bsa.bsa_operation(data_name, n, m, (1 - alpha) * Z, Z, tau, ED_mat, all_batches, 0.1, 0.3, main_seed)
+    
+
+
     accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
     print('accuracy', accuracy_)
     return accuracy_, \
@@ -145,7 +225,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
            num_edges
 
 
-dataset_name = 'reddit'
+dataset_name = 'citeseer'#'pubmed'
 bs = 512
 gamma = 0.3
 alpha = 0.9
@@ -162,7 +242,7 @@ acc_test, time_training, time_inference, time_inference_linear, time_total, num_
         niter=niter,
         gamma=gamma,
         data_name=dataset_name,
-        load_check=True,
+        load_check=False,
         dim=dim,
         alpha=alpha,
         maxepochs=mepoch)
