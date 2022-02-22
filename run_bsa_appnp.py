@@ -16,8 +16,9 @@ import struct
 main_seed = 42
 tf.random.set_seed(0)
 
+DEBUG_ = False
 
-if True:
+if not DEBUG_:
     from predictc import BSAcpp
 else:
     #vscode cant import cython modules in debug mode
@@ -191,25 +192,29 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
             n, m = 2110, 7388
 
     all_batches = np.array(all_batches)
-   
-    if False:
-        
-        Z, linear_time = \
-            BSA(A=Ah,
-                b=(1 - alpha) * Z,
-                x=Z,
-                niter=tau,
-                P=ED_mat,
-                all_batches=all_batches,
-                epsilon=0.1,
-                gamma=0.3,
-                seed=main_seed)
-    else:
+    n_butches = len(all_batches)
+    epsilon=0.1
+    gamma=0.3
+    Q = epsilon / n_butches + (1 - epsilon) * ED_mat
+    if not DEBUG_:
         linear_time = 0
-        #Z, linear_time = \
+            #Z, linear_time = \
         py_bsa = BSAcpp()
-        py_bsa.bsa_operation(data_name, n, m, (1 - alpha) * Z, Z, tau, ED_mat, all_batches, 0.1, 0.3, main_seed)
+        py_bsa.bsa_operation(data_name, n, m, (1 - alpha) * Z, Z, tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
     
+    print("="*100)
+    
+    Z, linear_time = \
+        BSA(A=Ah,
+            b=(1 - alpha) * Z,
+            x=Z,
+            niter=tau,
+            P=ED_mat,
+            Q = Q,
+            all_batches=all_batches,
+            epsilon=epsilon,
+            gamma=gamma,
+            seed=main_seed)
 
 
     accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
@@ -226,14 +231,14 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
 
 
 dataset_name = 'citeseer'#'pubmed'
-bs = 512
+bs = 64#512
 gamma = 0.3
 alpha = 0.9
 seed = 0
-tau = 100
+tau = 5#100
 niter = 1
 dim = 64
-mepoch = 200
+mepoch = 16#  200
 acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
     run(seed=seed,
         tau=tau,

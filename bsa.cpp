@@ -101,8 +101,9 @@ namespace predictc{
     double Bsa::bsa_operation(std::string dataset_name, uint n_, uint m_, 
         Eigen::Map<Eigen::MatrixXd> &b, 
         Eigen::Map<Eigen::MatrixXd> &x, uint niter, 
-        Eigen::Map<Eigen::MatrixXd> &P, 
-        Eigen::Map<Eigen::MatrixXd> &all_batches, 
+        Eigen::Map<Eigen::MatrixXd> &P,
+        Eigen::Map<Eigen::MatrixXd> &Q, 
+        Eigen::Map<Eigen::MatrixXi> &all_batches, 
         float epsilon, float gamma, uint seed)
     {
         std::cout << "dataset name: " << dataset_name << std::endl;
@@ -111,6 +112,7 @@ namespace predictc{
         std::cout << "x:" << x.rows() << " " << x.cols() << std::endl;
         std::cout << "niter" << niter << std::endl;
         std::cout << "P:" << P.rows() << " " << P.cols() << std::endl;
+        std::cout << "Q:" << Q.rows() << " " << Q.cols() << std::endl;
         std::cout << "all_batches:" << all_batches.rows() << " " << all_batches.cols() << std::endl;
         std::cout << "epsilon" << epsilon << std::endl;
         std::cout << "gamma" << gamma << std::endl;
@@ -177,8 +179,51 @@ namespace predictc{
         SpMat A(n_, n_);
         A.setFromTriplets(triplets.begin(), triplets.end());
 
-
+        int n_butches = all_batches.cols();
         
+        //Q = epsilon / n_butches + (1 - epsilon) * P
+
+
+        std::vector<int> list_batches(n_butches);
+        for(int i = 0; i < n_butches; ++i)
+        {
+            list_batches[i] = i;
+        }
+
+        bool random_jump = false;
+        int batch_i = 0;
+
+        int rows_id = 1;
+        int batch_id = 0;
+
+        auto rows_ = all_batches.col(rows_id);
+        auto cols_ = all_batches.col(batch_id);
+
+        std::ofstream fcpplog("cpp.log");
+        fcpplog << "all_batches: ";
+        for (int j = 0; j < all_batches.cols(); ++j)
+        {
+            for (int i = 0; i < all_batches.rows(); ++i)
+            {
+                fcpplog << all_batches(i, j) << " ";
+            }
+            fcpplog << std::endl;
+        }
+        
+
+        std::cout << "rows_: ";
+        for (int i = 0; i < 10; ++i)
+        {
+            std::cout << rows_[i] << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "cols_: ";
+        for (int i = 0; i < 10; ++i)
+        {
+            std::cout << cols_[i] << " ";
+        }
+        std::cout << std::endl;
 
         writeToCSVfile("test.csv", A);
         writeToBitmap("test.bmp", A);

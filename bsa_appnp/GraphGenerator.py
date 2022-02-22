@@ -70,7 +70,7 @@ def _precompute_block(batch_size, adj_matrix, seed):
     nnodes = adj_matrix.shape[0]
     nbatches = nnodes / batch_size
     rs = np.random.RandomState(seed=seed)
-    list_nodes = np.arange(adj_matrix.shape[0], dtype=int)
+    list_nodes = np.arange(adj_matrix.shape[0], dtype=np.int32)
     rs.shuffle(list_nodes)
     data = np.ones(nnodes)
     partitions, columns_indices = iid_divide(list_nodes, int(nbatches))
