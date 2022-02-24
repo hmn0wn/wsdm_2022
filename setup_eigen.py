@@ -10,7 +10,7 @@ setup(
 		sources=['predictc.pyx'],
 		language='c++',
 		extra_compile_args=["-std=c++11"],
-		include_dirs=[".", "module-dir-name"] + eigency.get_includes()+["./eigen3"],
+		include_dirs=[".", "module-dir-name"] + eigency.get_includes()+["./eigen3", "./libigl/include"],
 		#If you have installed eigen, you can configure your own path. When numpy references errors, you need to import its header file
 		install_requires=['Cython>=0.2.15','eigency>=1.77'],
 		packages=['little-try'],

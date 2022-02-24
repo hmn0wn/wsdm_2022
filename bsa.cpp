@@ -5,20 +5,26 @@
 #include <vector>
 
 #include <Eigen/Sparse>
+#include <Eigen/Dense>
+#include <Eigen/Core>
+
+#include <igl/cotmatrix.h>
+#include <igl/slice.h>
 
 using SpMat = Eigen::SparseMatrix<double>;
 using Trip = Eigen::Triplet<double>;
 
-
-const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
+std::string br = "====================================================================================================";
+std::string br2 = "==================================================";
+std::string br3 = "=========================";
 
 template <typename Derived>
-void writeToCSVfile(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
+void write_to_csvfile(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
 {
     std::ofstream file(name.c_str());
     for (int i = 0; i < matrix.rows(); ++i)
     {
-        for(int j = 0; j < matrix.cols(); ++j)
+        for(uint j = 0; j < matrix.cols(); ++j)
         {
             file << matrix.coeff(i, j) << ", ";
         }
@@ -29,7 +35,7 @@ void writeToCSVfile(std::string name, const Eigen::SparseMatrix<Derived>& matrix
 }
 
 template <typename Derived>
-void writeToBitmap(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
+void write_to_bitmap(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
 {
 
     int n = matrix.rows();
@@ -44,7 +50,7 @@ void writeToBitmap(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
 
     for (int i = 0; i < w; ++i)
     {
-        for(int j = 0; j < h; ++j)
+        for(uint j = 0; j < h; ++j)
         {
             unsigned char r = 0, g = 0, b = 0;
             if(matrix.coeff(i, j) > 0)
@@ -83,7 +89,7 @@ void writeToBitmap(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
     f = fopen(name.c_str(),"wb");
     fwrite(bmpfileheader,1,14,f);
     fwrite(bmpinfoheader,1,40,f);
-    for(int i=0; i<h; i++)
+    for(uint i=0; i<h; i++)
     {
         fwrite(img+(w*(h-i-1)*3),3,w,f);
         fwrite(bmppad,1,(4-(w*3)%4)%4,f);
@@ -93,12 +99,194 @@ void writeToBitmap(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
     fclose(f);
 }
 
+void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
+{
+
+    std::vector<uint> el=std::vector<uint>(m_);
+    std::vector<uint> pl=std::vector<uint>(n_+1);
+    std::vector<double> dl=std::vector<double>(m_);
+
+
+    std::string dataset_el="bsa_appnp/data/"+dataset_name+"_adj_el.txt";
+    const char *p1=dataset_el.c_str();
+    if (FILE *f1 = fopen(p1, "rb"))
+    {
+        size_t rtn = fread(el.data(), sizeof el[0], el.size(), f1);
+        if(rtn!=m_)
+            std::cout<<"Error! "<<dataset_el<<" Incorrect read! " << rtn <<"\r"<<std::endl;
+        fclose(f1);
+    }
+    else
+    {
+        std::cout<<dataset_el<<" Not Exists.\r"<<std::endl;
+        exit(1);
+    }
+
+    std::string dataset_pl="bsa_appnp/data/"+dataset_name+"_adj_pl.txt";
+    const char *p2=dataset_pl.c_str();
+
+    if (FILE *f2 = fopen(p2, "rb"))
+    {
+        size_t rtn = fread(pl.data(), sizeof pl[0], pl.size(), f2);
+        if(rtn!=n_+1)
+            std::cout<<"Error! "<<dataset_pl<<" Incorrect read!" << rtn << " " << n_+1 <<"\r"<<std::endl;
+        fclose(f2);
+    }
+    else
+    {
+        std::cout<<dataset_pl<<" Not Exists."<<"\r"<<std::endl;
+        exit(1);
+    }
+
+    std::string dataset_dl="bsa_appnp/data/"+dataset_name+"_adj_dl.txt";
+    const char *p3=dataset_dl.c_str();
+
+    if (FILE *f3 = fopen(p3, "rb"))
+    {
+        size_t rtn = fread(dl.data(), sizeof dl[0], dl.size(), f3);
+        if(rtn!=n_+1)
+            std::cout<<"Error! "<<dataset_dl<<" Incorrect read!" << rtn << " " << n_+1 <<"\r"<<std::endl;
+        fclose(f3);
+    }
+    else
+    {
+        std::cout<<dataset_pl<<" Not Exists."<<"\r"<<std::endl;
+        exit(1);
+    }
+
+    std::cout << "Read finished\r"<<std::endl;
+
+    std::cout << "el: ";
+    for (int i = 0; i < 10 && i < el.size(); ++i)
+    {
+        std::cout << el[i] << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "pl: ";
+    for (int i = 0; i < 10 && i < pl.size(); ++i)
+    {
+        std::cout << pl[i] << " ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "dl: ";
+    for (int i = 0; i < 10 && i < dl.size(); ++i)
+    {
+        std::cout << dl[i] << " ";
+    }
+    std::cout << std::endl;
+
+    std::vector<Trip> triplets;
+    triplets.reserve(el.size());
+    for(uint i = 0; i < n_; ++i)
+    {
+        for(uint jptr = pl[i]; jptr < pl[i+1]; ++jptr)
+        {
+            int j = el[jptr];
+            double d = dl[jptr];
+            triplets.push_back(Trip(i, j, d));
+            std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
+        }
+    }
+
+    A.setFromTriplets(triplets.begin(), triplets.end());
+}
+
+const static Eigen::IOFormat MatFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, " ", "\n");
+
+template <typename Derived>
+void print_mat(std::string dir_name, std::string mat_name, const Eigen::MatrixBase<Derived>& matrix, bool to_print = false)
+{
+    std::string path = dir_name + std::string("/") + mat_name + std::string("_mat.cpp.log");
+    std::ofstream fcpplog(path);
+    //fcpplog << matrix.format(MatFormat);
+    uint maxn = 10;
+    std::cout.precision(7);
+    if (to_print) std::cout << mat_name << std::endl;
+    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix(i, j) << " ";
+            if (to_print) std::cout << matrix(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+template <typename Derived>
+void print_mat(std::string dir_name, std::string mat_name, const Eigen::SparseMatrix<Derived>& matrix, bool to_print = false)
+{
+    std::string path = dir_name + std::string("/") + mat_name + std::string("_mat.cpp.log");
+    std::ofstream fcpplog(path);
+    //fcpplog << matrix.format(MatFormat);
+    uint maxn = 100;
+    std::cout.precision(7);
+    if (to_print) std::cout << mat_name << std::endl;
+    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix.coeff(i, j) << " ";
+            if (to_print) std::cout << matrix.coeff(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+template <typename Derived>
+void print_mat_i(std::string dir_name, std::string mat_name, const Eigen::SparseMatrix<Derived>& matrix)
+{
+    std::string path = dir_name + std::string("/") + mat_name + std::string("_mat.cpp.log");
+    std::ofstream fcpplog(path);
+    //fcpplog << matrix.format(MatFormat);
+    uint maxn = 100;
+    std::cout.precision(7);
+    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
+        {
+            double el = matrix.coeff(i, j);
+            double eps = 0.001;
+            if(el - eps > 0.0)
+            {
+                fcpplog << i << "\t" << j << "\t\t: " << el << std::endl;
+            }
+        }
+    }
+}
+
+
+template<typename XprType, typename RowIndices, typename ColIndices>
+void print_mat(std::string dir_name, std::string mat_name, const Eigen::IndexedView<XprType, RowIndices, ColIndices>& matrix, bool to_print = false)
+{
+    std::string path = dir_name + std::string("/") + mat_name + std::string("_mat.cpp.log");
+    std::ofstream fcpplog(path);
+    uint maxn = 10;
+    std::cout.precision(7);
+    if (to_print) std::cout << mat_name << std::endl;
+    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix(i, j) << " ";
+            if (to_print) std::cout << matrix(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+
 
 namespace predictc{
     Bsa::Bsa()
     {}
     
-    double Bsa::bsa_operation(std::string dataset_name, uint n_, uint m_, 
+    double Bsa::bsa_operation(std::string dataset_name, uint size_, uint n_, uint m_, 
         Eigen::Map<Eigen::MatrixXd> &b, 
         Eigen::Map<Eigen::MatrixXd> &x, uint niter, 
         Eigen::Map<Eigen::MatrixXd> &P,
@@ -107,7 +295,7 @@ namespace predictc{
         float epsilon, float gamma, uint seed)
     {
         std::cout << "dataset name: " << dataset_name << std::endl;
-        std::cout << "n: " << n_ << std::endl << "m: " << m_ << std::endl;
+        std::cout << "size_: " << size_ << "n: " << n_ << std::endl << "m: " << m_ << std::endl;
         std::cout << "b:" << b.rows() << " " << b.cols() << std::endl;
         std::cout << "x:" << x.rows() << " " << x.cols() << std::endl;
         std::cout << "niter" << niter << std::endl;
@@ -118,74 +306,22 @@ namespace predictc{
         std::cout << "gamma" << gamma << std::endl;
         std::cout << "seed" << seed << std::endl;
 
-        std::vector<uint> el=std::vector<uint>(m_);
-        std::vector<uint> pl=std::vector<uint>(n_+1);
-        std::string dataset_el="bsa_appnp/data/"+dataset_name+"_adj_el.txt";
-        const char *p1=dataset_el.c_str();
-        if (FILE *f1 = fopen(p1, "rb"))
-        {
-            size_t rtn = fread(el.data(), sizeof el[0], el.size(), f1);
-            if(rtn!=m_)
-                std::cout<<"Error! "<<dataset_el<<" Incorrect read! " << rtn <<"\r"<<std::endl;
-            fclose(f1);
-        }
-        else
-        {
-            std::cout<<dataset_el<<" Not Exists.\r"<<std::endl;
-            exit(1);
-        }
-        std::string dataset_pl="bsa_appnp/data/"+dataset_name+"_adj_pl.txt";
-        const char *p2=dataset_pl.c_str();
+        print_mat("./logs", "b", b);
+        print_mat("./logs", "x", x);
+        print_mat("./logs", "P", P);
+        print_mat("./logs", "Q", Q);
+        print_mat("./logs", "all_batches", all_batches);
+               
+        std::cout << br << std::endl;
+        std::cout << "BSA cpp" << std::endl;
+        SpMat A(size_, size_);
+        read_sparse_matrix(n_, m_, dataset_name, A);
+        print_mat_i("./logs", std::string("A"), A);
 
-        if (FILE *f2 = fopen(p2, "rb"))
-        {
-            size_t rtn = fread(pl.data(), sizeof pl[0], pl.size(), f2);
-            if(rtn!=n_+1)
-                std::cout<<"Error! "<<dataset_pl<<" Incorrect read!" << rtn << " " << n_+1 <<"\r"<<std::endl;
-            fclose(f2);
-        }
-        else
-        {
-            std::cout<<dataset_pl<<" Not Exists."<<"\r"<<std::endl;
-            exit(1);
-        }
-
-        std::cout << "Read finished\r"<<std::endl;
-
-        std::cout << "el: ";
-        for (int i = 0; i < 10; ++i)
-        {
-            std::cout << el[i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "pl: ";
-        for (int i = 0; i < 10; ++i)
-        {
-            std::cout << pl[i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::vector<Trip> triplets;
-        triplets.reserve(el.size());
-        for(int i = 0; i < n_; ++i)
-        {
-            for(int jptr = pl[i]; jptr < pl[i+1]; ++jptr)
-            {
-                int j = el[jptr];
-                triplets.push_back(Trip(i, j, 1.0));
-            }
-        }
-        SpMat A(n_, n_);
-        A.setFromTriplets(triplets.begin(), triplets.end());
-
-        int n_butches = all_batches.cols();
-        
-        //Q = epsilon / n_butches + (1 - epsilon) * P
-
+        uint n_butches = all_batches.cols();
 
         std::vector<int> list_batches(n_butches);
-        for(int i = 0; i < n_butches; ++i)
+        for(uint i = 0; i < n_butches; ++i)
         {
             list_batches[i] = i;
         }
@@ -196,37 +332,81 @@ namespace predictc{
         int rows_id = 1;
         int batch_id = 0;
 
-        auto rows_ = all_batches.col(rows_id);
-        auto cols_ = all_batches.col(batch_id);
-
-        std::ofstream fcpplog("cpp.log");
-        fcpplog << "all_batches: ";
-        for (int j = 0; j < all_batches.cols(); ++j)
-        {
-            for (int i = 0; i < all_batches.rows(); ++i)
-            {
-                fcpplog << all_batches(i, j) << " ";
-            }
-            fcpplog << std::endl;
-        }
         
-
-        std::cout << "rows_: ";
-        for (int i = 0; i < 10; ++i)
+        
+        for(uint iter=0; iter < niter; ++iter)
         {
-            std::cout << rows_[i] << " ";
-        }
-        std::cout << std::endl;
+            std::cout << br3 << std::endl;
+            auto rows_ = all_batches.col(rows_id);
+            auto cols_ = all_batches.col(batch_id);
+            auto jump = P(rows_id, batch_id);
+            auto qjump = Q(rows_id, batch_id);
+            jump *= 1; qjump*= 1;
 
-        std::cout << "cols_: ";
-        for (int i = 0; i < 10; ++i)
-        {
-            std::cout << cols_[i] << " ";
-        }
-        std::cout << std::endl;
+            std::cout << "batch_id: " << batch_id << std::endl;
+            //std::cout << "jump: " << jump << std::endl;
+            //std::cout << "qjump: " << qjump << std::endl;
 
-        writeToCSVfile("test.csv", A);
-        writeToBitmap("test.bmp", A);
+            std::cout << "rows_: ";
+            for (int i = 0; i < 10 && i < rows_.size(); ++i)
+            {
+                std::cout << rows_[i] << " ";
+            }
+            std::cout << std::endl;
+
+            std::cout << "cols_: ";
+            for (int i = 0; i < 10 && i < cols_.size(); ++i)
+            {
+                std::cout << cols_[i] << " ";
+            }
+            std::cout << std::endl;
+
+            //auto x_rows = x(Eigen::all, rows_);
+            Eigen::MatrixXd x_rows;
+            Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
+            igl::slice(x,rows_, x_cols_all, x_rows);
+            print_mat("./logs", std::string("x_rows") + std::to_string(iter), x_rows);
+
+            SpMat A_rows_cols;
+            igl::slice(A,rows_,cols_,A_rows_cols);
+            print_mat("./logs", std::string("A_") + std::to_string(iter), A_rows_cols, true);
+
+            //auto x_cols = x(Eigen::all, cols_);
+            Eigen::MatrixXd x_cols;
+            Eigen::VectorXi x_rows_all = igl::LinSpaced<Eigen::VectorXi >(x.rows(),0,x.rows()-1);
+            igl::slice(x,x_rows_all, cols_, x_cols);
+            print_mat("./logs", std::string("x_cols") + std::to_string(iter), x_cols, true);
+
+            //auto b_rows = b(Eigen::all, rows_);
+            Eigen::MatrixXd b_rows;
+            Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
+            igl::slice(b,rows_, b_cols_all, b_rows);
+            print_mat("./logs", std::string("b_rows") + std::to_string(iter), b_rows);
+
+            //auto cur_A = A(rows_, cols_);
+            //x(rows_, Eigen::all) = x(rows_, Eigen::all) * 2;
+            double q = 1.0/pow((1+iter),gamma) * jump/qjump;
+            //auto res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
+            auto res = x_cols * A_rows_cols;
+            //std::cout << "A_rows_cols: " << A_rows_cols.rows() << " " << A_rows_cols.cols() << std::endl;
+            print_mat("./logs", std::string("res") + std::to_string(iter), res);
+
+            rows_id = batch_id;
+            if(random_jump)
+            {
+                //batch_id = random
+            }
+            else
+            {
+                //
+                batch_i = (batch_i + 1)%n_butches;
+                batch_id = list_batches[batch_i];
+            }
+            //rows_ = copy cols_
+            //cols_ =  all_batches.col(batch_id);
+        }
+        //writeToCSVfile("test.csv", A);
+        //writeToBitmap("test.bmp", A);
         //saveMarket(A, "test.save");
         return 0;
     }

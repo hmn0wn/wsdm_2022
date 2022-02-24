@@ -30,6 +30,7 @@ def graphsave(adj, dir, to_sort=False):
     if (sp.isspmatrix_csr(adj)):
         el = adj.indices
         pl = adj.indptr
+        data = adj.data
 
         EL = np.array(el, dtype=np.uint32)
         PL = np.array(pl, dtype=np.uint32)
@@ -57,6 +58,15 @@ def graphsave(adj, dir, to_sort=False):
             m = struct.pack('I', i)
             f2.write(m)
         f2.close()
+
+        print("DL:", data.shape, " size: ", data.size)
+        f3 = open(dir + 'dl.txt', 'wb')
+        for i in data:
+            m = struct.pack('d', i)
+            #print(m)
+            f3.write(m)
+        f3.close()
+
         return EL_re.size, PL.size
     else:
         print("Format Error!")
@@ -173,11 +183,43 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
     Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
 
     if False:
+        data_name = "test"
+        indptr = np.array([0, 2, 3, 6])
+        indices = np.array([0, 2, 2, 0, 1, 2])
+        data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
+        Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+
+    if True:
+        data_name = "test1"
+        row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
+        col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
+        data = np.array([0.01, 0.02, 0.01, 0.03, 0.04, 0.05, 0.06, 0.02, 0.05, 0.04, 0.03, 0.01, 0.02, 0.01, 0.01])
+        Ah = sp.csr_matrix((data, (row, col)), shape=(6, 6))
+        print(Ah.toarray())
+
+        Z = np.array([\
+            #np.array([0.011, 0.012, 0.013, 0.014, 0.015, 0.016], dtype=np.float32),\
+            #np.array([0.021, 0.022, 0.023, 0.024, 0.025, 0.026], dtype=np.float32),\
+            #np.array([0.031, 0.032, 0.033, 0.034, 0.035, 0.036], dtype=np.float32),\
+            #np.array([0.041, 0.042, 0.043, 0.044, 0.045, 0.046], dtype=np.float32),\
+            #np.array([0.051, 0.052, 0.053, 0.054, 0.055, 0.056], dtype=np.float32),\
+            #np.array([0.061, 0.062, 0.063, 0.064, 0.065, 0.066], dtype=np.float32)])
+            np.array([0.011, 0.012], dtype=np.float32),\
+            np.array([0.021, 0.022], dtype=np.float32),\
+            np.array([0.031, 0.032], dtype=np.float32),\
+            np.array([0.041, 0.042], dtype=np.float32),\
+            np.array([0.051, 0.052], dtype=np.float32),\
+            np.array([0.061, 0.062], dtype=np.float32)])
+
+        all_batches = [np.array([0,1,2], dtype=np.int32), np.array([3,4,5], dtype=np.int32)]
+        test_idx = [4,5]
+        labels_test = [1,1]
+    if False:
         adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
         sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
 
-    if False:
-        n, m = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
+    if True:
+        m,n = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
         n = n - 1 
     else:
         if data_name=="cora_full":
@@ -190,6 +232,10 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
             n, m = 232965, 114615892
         if data_name=='citeseer':
             n, m = 2110, 7388
+        if data_name=='test':
+            n,m = 3,6
+        if data_name=='test1':
+            n,m = 5,11
 
     all_batches = np.array(all_batches)
     n_butches = len(all_batches)
@@ -200,7 +246,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
         linear_time = 0
             #Z, linear_time = \
         py_bsa = BSAcpp()
-        py_bsa.bsa_operation(data_name, n, m, (1 - alpha) * Z, Z, tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
+        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m, (1 - alpha) * Z.astype("float64"), Z.astype("float64"), tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
     
     print("="*100)
     
@@ -235,7 +281,7 @@ bs = 64#512
 gamma = 0.3
 alpha = 0.9
 seed = 0
-tau = 5#100
+tau = 1#100
 niter = 1
 dim = 64
 mepoch = 16#  200
