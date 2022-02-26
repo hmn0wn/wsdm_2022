@@ -1878,7 +1878,7 @@ static int __pyx_pf_8predictc_6BSAcpp___cinit__(struct __pyx_obj_8predictc_BSAcp
  *     def __cinit__(self):
  *         self.c_bsa=Bsa()             # <<<<<<<<<<<<<<
  * 
- *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, np.ndarray b, np.ndarray x, unsigned int niter, np.ndarray P, np.ndarray Q, np.ndarray all_batches, float epsilon, float gamma, unsigned int seed):
+ *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, \
  */
   try {
     __pyx_t_1 = predictc::Bsa();
@@ -1910,8 +1910,9 @@ static int __pyx_pf_8predictc_6BSAcpp___cinit__(struct __pyx_obj_8predictc_BSAcp
 /* "predictc.pyx":9
  *         self.c_bsa=Bsa()
  * 
- *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, np.ndarray b, np.ndarray x, unsigned int niter, np.ndarray P, np.ndarray Q, np.ndarray all_batches, float epsilon, float gamma, unsigned int seed):             # <<<<<<<<<<<<<<
- *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, Map[MatrixXd](b), Map[MatrixXd](x), niter, Map[MatrixXd](P), Map[MatrixXd](Q), Map[MatrixXi](all_batches), epsilon, gamma, seed)
+ *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, \             # <<<<<<<<<<<<<<
+ *     np.ndarray b, \
+ *     np.ndarray x, unsigned int niter, \
  */
 
 /* Python wrapper */
@@ -2076,13 +2077,13 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
     __pyx_v_m_ = __Pyx_PyInt_As_unsigned_int(values[3]); if (unlikely((__pyx_v_m_ == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 9, __pyx_L3_error)
     __pyx_v_b = ((PyArrayObject *)values[4]);
     __pyx_v_x = ((PyArrayObject *)values[5]);
-    __pyx_v_niter = __Pyx_PyInt_As_unsigned_int(values[6]); if (unlikely((__pyx_v_niter == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 9, __pyx_L3_error)
+    __pyx_v_niter = __Pyx_PyInt_As_unsigned_int(values[6]); if (unlikely((__pyx_v_niter == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 11, __pyx_L3_error)
     __pyx_v_P = ((PyArrayObject *)values[7]);
     __pyx_v_Q = ((PyArrayObject *)values[8]);
     __pyx_v_all_batches = ((PyArrayObject *)values[9]);
-    __pyx_v_epsilon = __pyx_PyFloat_AsFloat(values[10]); if (unlikely((__pyx_v_epsilon == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 9, __pyx_L3_error)
-    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[11]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 9, __pyx_L3_error)
-    __pyx_v_seed = __Pyx_PyInt_As_unsigned_int(values[12]); if (unlikely((__pyx_v_seed == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 9, __pyx_L3_error)
+    __pyx_v_epsilon = __pyx_PyFloat_AsFloat(values[10]); if (unlikely((__pyx_v_epsilon == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
+    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[11]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
+    __pyx_v_seed = __Pyx_PyInt_As_unsigned_int(values[12]); if (unlikely((__pyx_v_seed == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -2092,11 +2093,11 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_b), __pyx_ptype_5numpy_ndarray, 1, "b", 0))) __PYX_ERR(1, 9, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_x), __pyx_ptype_5numpy_ndarray, 1, "x", 0))) __PYX_ERR(1, 9, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_P), __pyx_ptype_5numpy_ndarray, 1, "P", 0))) __PYX_ERR(1, 9, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_Q), __pyx_ptype_5numpy_ndarray, 1, "Q", 0))) __PYX_ERR(1, 9, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_all_batches), __pyx_ptype_5numpy_ndarray, 1, "all_batches", 0))) __PYX_ERR(1, 9, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_b), __pyx_ptype_5numpy_ndarray, 1, "b", 0))) __PYX_ERR(1, 10, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_x), __pyx_ptype_5numpy_ndarray, 1, "x", 0))) __PYX_ERR(1, 11, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_P), __pyx_ptype_5numpy_ndarray, 1, "P", 0))) __PYX_ERR(1, 12, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_Q), __pyx_ptype_5numpy_ndarray, 1, "Q", 0))) __PYX_ERR(1, 13, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_all_batches), __pyx_ptype_5numpy_ndarray, 1, "all_batches", 0))) __PYX_ERR(1, 14, __pyx_L1_error)
   __pyx_r = __pyx_pf_8predictc_6BSAcpp_2bsa_operation(((struct __pyx_obj_8predictc_BSAcpp *)__pyx_v_self), __pyx_v_dataset_name, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_v_b, __pyx_v_x, __pyx_v_niter, __pyx_v_P, __pyx_v_Q, __pyx_v_all_batches, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_seed);
 
   /* function exit code */
@@ -2125,13 +2126,15 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("bsa_operation", 0);
 
-  /* "predictc.pyx":10
- * 
- *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, np.ndarray b, np.ndarray x, unsigned int niter, np.ndarray P, np.ndarray Q, np.ndarray all_batches, float epsilon, float gamma, unsigned int seed):
- *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, Map[MatrixXd](b), Map[MatrixXd](x), niter, Map[MatrixXd](P), Map[MatrixXd](Q), Map[MatrixXi](all_batches), epsilon, gamma, seed)             # <<<<<<<<<<<<<<
+  /* "predictc.pyx":16
+ *     np.ndarray all_batches, \
+ *     float epsilon, float gamma, unsigned int seed):
+ *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXd](b), \
+ *         Map[MatrixXd](x), niter, \
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_dataset_name, __pyx_n_s_encode); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 10, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_dataset_name, __pyx_n_s_encode); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
@@ -2145,42 +2148,89 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 10, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_4 = __pyx_convert_string_from_py_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 10, __pyx_L1_error)
+  __pyx_t_4 = __pyx_convert_string_from_py_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "predictc.pyx":17
+ *     float epsilon, float gamma, unsigned int seed):
+ *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \
+ *         Map[MatrixXd](b), \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXd](x), niter, \
+ *         Map[MatrixXd](P), \
+ */
   try {
     __pyx_t_5 = eigency::Map<Eigen::MatrixXd> (__pyx_v_b);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 10, __pyx_L1_error)
+    __PYX_ERR(1, 17, __pyx_L1_error)
   }
+
+  /* "predictc.pyx":18
+ *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \
+ *         Map[MatrixXd](b), \
+ *         Map[MatrixXd](x), niter, \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXd](P), \
+ *         Map[MatrixXd](Q), \
+ */
   try {
     __pyx_t_6 = eigency::Map<Eigen::MatrixXd> (__pyx_v_x);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 10, __pyx_L1_error)
+    __PYX_ERR(1, 18, __pyx_L1_error)
   }
+
+  /* "predictc.pyx":19
+ *         Map[MatrixXd](b), \
+ *         Map[MatrixXd](x), niter, \
+ *         Map[MatrixXd](P), \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXd](Q), \
+ *         Map[MatrixXi](all_batches), \
+ */
   try {
     __pyx_t_7 = eigency::Map<Eigen::MatrixXd> (__pyx_v_P);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 10, __pyx_L1_error)
+    __PYX_ERR(1, 19, __pyx_L1_error)
   }
+
+  /* "predictc.pyx":20
+ *         Map[MatrixXd](x), niter, \
+ *         Map[MatrixXd](P), \
+ *         Map[MatrixXd](Q), \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXi](all_batches), \
+ *         epsilon, gamma, seed)
+ */
   try {
     __pyx_t_8 = eigency::Map<Eigen::MatrixXd> (__pyx_v_Q);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 10, __pyx_L1_error)
+    __PYX_ERR(1, 20, __pyx_L1_error)
   }
+
+  /* "predictc.pyx":21
+ *         Map[MatrixXd](P), \
+ *         Map[MatrixXd](Q), \
+ *         Map[MatrixXi](all_batches), \             # <<<<<<<<<<<<<<
+ *         epsilon, gamma, seed)
+ */
   try {
     __pyx_t_9 = eigency::Map<Eigen::MatrixXi> (__pyx_v_all_batches);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 10, __pyx_L1_error)
+    __PYX_ERR(1, 21, __pyx_L1_error)
   }
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_bsa.bsa_operation(__pyx_t_4, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_t_5, __pyx_t_6, __pyx_v_niter, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_seed)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 10, __pyx_L1_error)
+
+  /* "predictc.pyx":16
+ *     np.ndarray all_batches, \
+ *     float epsilon, float gamma, unsigned int seed):
+ *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \             # <<<<<<<<<<<<<<
+ *         Map[MatrixXd](b), \
+ *         Map[MatrixXd](x), niter, \
+ */
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_bsa.bsa_operation(__pyx_t_4, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_t_5, __pyx_t_6, __pyx_v_niter, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_seed)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -2189,8 +2239,9 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
   /* "predictc.pyx":9
  *         self.c_bsa=Bsa()
  * 
- *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, np.ndarray b, np.ndarray x, unsigned int niter, np.ndarray P, np.ndarray Q, np.ndarray all_batches, float epsilon, float gamma, unsigned int seed):             # <<<<<<<<<<<<<<
- *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, Map[MatrixXd](b), Map[MatrixXd](x), niter, Map[MatrixXd](P), Map[MatrixXd](Q), Map[MatrixXi](all_batches), epsilon, gamma, seed)
+ *     def bsa_operation(self, dataset_name, unsigned int size, unsigned int n_, unsigned int m_, \             # <<<<<<<<<<<<<<
+ *     np.ndarray b, \
+ *     np.ndarray x, unsigned int niter, \
  */
 
   /* function exit code */

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <sys/time.h>
 
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
@@ -10,6 +11,41 @@
 
 #include <igl/cotmatrix.h>
 #include <igl/slice.h>
+#include <igl/slice_into.h>
+
+
+template <typename DerivedX, typename DerivedY, typename DerivedR, typename DerivedC>
+IGL_INLINE void igl::slice_into(
+  const Eigen::MatrixBase<DerivedX> & X,
+  const Eigen::MatrixBase<DerivedR> & R,
+  const Eigen::MatrixBase<DerivedC> & C,
+  Eigen::MatrixBase<DerivedY> & Y)
+{
+
+  int xm = X.rows();
+  int xn = X.cols();
+#ifndef NDEBUG
+  assert(R.size() == xm);
+  assert(C.size() == xn);
+  int ym = Y.rows();
+  int yn = Y.cols();
+  assert(R.minCoeff() >= 0);
+  assert(R.maxCoeff() < ym);
+  assert(C.minCoeff() >= 0);
+  assert(C.maxCoeff() < yn);
+#endif
+
+  // Build reindexing maps for columns and rows, -1 means not in map
+  Eigen::Matrix<typename DerivedR::Scalar,Eigen::Dynamic,1> RI;
+  RI.resize(xm);
+  for(int i = 0;i<xm;i++)
+  {
+    for(int j = 0;j<xn;j++)
+    {
+      Y(int(R(i)),int(C(j))) = X(i,j);
+    }
+  }
+}
 
 using SpMat = Eigen::SparseMatrix<double>;
 using Trip = Eigen::Triplet<double>;
@@ -186,7 +222,7 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
             int j = el[jptr];
             double d = dl[jptr];
             triplets.push_back(Trip(i, j, d));
-            std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
+            //std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
         }
     }
 
@@ -306,17 +342,18 @@ namespace predictc{
         std::cout << "gamma" << gamma << std::endl;
         std::cout << "seed" << seed << std::endl;
 
-        print_mat("./logs", "b", b);
-        print_mat("./logs", "x", x);
-        print_mat("./logs", "P", P);
-        print_mat("./logs", "Q", Q);
-        print_mat("./logs", "all_batches", all_batches);
-               
+        //print_mat("./logs", "b", b);
+        //print_mat("./logs", "x", x);
+        //print_mat("./logs", "P", P);
+        //print_mat("./logs", "Q", Q);
+        //print_mat("./logs", "all_batches", all_batches);
+        
+        double prep_t, cclock_t;
         std::cout << br << std::endl;
         std::cout << "BSA cpp" << std::endl;
         SpMat A(size_, size_);
         read_sparse_matrix(n_, m_, dataset_name, A);
-        print_mat_i("./logs", std::string("A"), A);
+        //print_mat_i("./logs", std::string("A"), A);
 
         uint n_butches = all_batches.cols();
 
@@ -332,65 +369,70 @@ namespace predictc{
         int rows_id = 1;
         int batch_id = 0;
 
-        
-        
+            
+        struct timeval t_start,t_end;
+        clock_t start_t, end_t;
+        gettimeofday(&t_start,NULL);
+        start_t = clock();
         for(uint iter=0; iter < niter; ++iter)
         {
-            std::cout << br3 << std::endl;
+            //std::cout << br3 << std::endl;
             auto rows_ = all_batches.col(rows_id);
             auto cols_ = all_batches.col(batch_id);
             auto jump = P(rows_id, batch_id);
             auto qjump = Q(rows_id, batch_id);
             jump *= 1; qjump*= 1;
 
-            std::cout << "batch_id: " << batch_id << std::endl;
+            //std::cout << "batch_id: " << batch_id << std::endl;
             //std::cout << "jump: " << jump << std::endl;
             //std::cout << "qjump: " << qjump << std::endl;
-
-            std::cout << "rows_: ";
-            for (int i = 0; i < 10 && i < rows_.size(); ++i)
+            if(false)
             {
-                std::cout << rows_[i] << " ";
-            }
-            std::cout << std::endl;
+                std::cout << "rows_: ";
+                for (int i = 0; i < 10 && i < rows_.size(); ++i)
+                {
+                    std::cout << rows_[i] << " ";
+                }
+                std::cout << std::endl;
 
-            std::cout << "cols_: ";
-            for (int i = 0; i < 10 && i < cols_.size(); ++i)
-            {
-                std::cout << cols_[i] << " ";
+                std::cout << "cols_: ";
+                for (int i = 0; i < 10 && i < cols_.size(); ++i)
+                {
+                    std::cout << cols_[i] << " ";
+                }
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
 
             //auto x_rows = x(Eigen::all, rows_);
             Eigen::MatrixXd x_rows;
             Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
             igl::slice(x,rows_, x_cols_all, x_rows);
-            print_mat("./logs", std::string("x_rows") + std::to_string(iter), x_rows);
+            //print_mat("./logs", std::string("x_rows") + std::to_string(iter), x_rows);
 
             SpMat A_rows_cols;
             igl::slice(A,rows_,cols_,A_rows_cols);
-            print_mat("./logs", std::string("A_") + std::to_string(iter), A_rows_cols, true);
+            //print_mat("./logs", std::string("A_") + std::to_string(iter), A_rows_cols);
 
             //auto x_cols = x(Eigen::all, cols_);
             Eigen::MatrixXd x_cols;
-            Eigen::VectorXi x_rows_all = igl::LinSpaced<Eigen::VectorXi >(x.rows(),0,x.rows()-1);
-            igl::slice(x,x_rows_all, cols_, x_cols);
-            print_mat("./logs", std::string("x_cols") + std::to_string(iter), x_cols, true);
+            igl::slice(x,cols_, x_cols_all, x_cols);
+            //print_mat("./logs", std::string("x_cols") + std::to_string(iter), x_cols);
 
             //auto b_rows = b(Eigen::all, rows_);
             Eigen::MatrixXd b_rows;
             Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
             igl::slice(b,rows_, b_cols_all, b_rows);
-            print_mat("./logs", std::string("b_rows") + std::to_string(iter), b_rows);
+            //print_mat("./logs", std::string("b_rows") + std::to_string(iter), b_rows);
 
             //auto cur_A = A(rows_, cols_);
             //x(rows_, Eigen::all) = x(rows_, Eigen::all) * 2;
             double q = 1.0/pow((1+iter),gamma) * jump/qjump;
-            //auto res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
-            auto res = x_cols * A_rows_cols;
-            //std::cout << "A_rows_cols: " << A_rows_cols.rows() << " " << A_rows_cols.cols() << std::endl;
-            print_mat("./logs", std::string("res") + std::to_string(iter), res);
-
+            Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
+            //auto res = A_rows_cols*x_cols;
+            //print_mat("./logs", std::string("res") + std::to_string(iter), res, true);
+            
+            igl::slice_into(res, rows_, x_cols_all, x);
+            
             rows_id = batch_id;
             if(random_jump)
             {
@@ -405,9 +447,17 @@ namespace predictc{
             //rows_ = copy cols_
             //cols_ =  all_batches.col(batch_id);
         }
+        print_mat("./logs", std::string("x_res"), x, true);
         //writeToCSVfile("test.csv", A);
         //writeToBitmap("test.bmp", A);
         //saveMarket(A, "test.save");
+        end_t = clock();
+        cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        gettimeofday(&t_end, NULL);
+        prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
+        std::cout << br3 << std::endl;
+        std::cout<<"cpp BSA time: "<<prep_t<<" s"<<"\r"<<std::endl;
+        std::cout<<"cpp BSA clock time : "<<cclock_t<<" s"<<"\r"<<std::endl;
         return 0;
     }
 }

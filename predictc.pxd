@@ -10,4 +10,9 @@ cdef extern from "bsa.cpp":
 cdef extern from "bsa.h" namespace "predictc":
     cdef cppclass Bsa:
         Bsa() except+
-        double bsa_operation(string, uint, uint, uint, Map[MatrixXd] &, Map[MatrixXd] &, uint, Map[MatrixXd] &, Map[MatrixXd] &, Map[MatrixXi] &, float, float, uint)
+        double bsa_operation(string, uint, uint, uint, \
+        Map[MatrixXd] &, \
+        Map[MatrixXd] &, uint, \
+        Map[MatrixXd] &, \
+        Map[MatrixXd] &, \
+        Map[MatrixXi] &, float, float, uint)

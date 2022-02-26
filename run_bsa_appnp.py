@@ -16,7 +16,7 @@ import struct
 main_seed = 42
 tf.random.set_seed(0)
 
-DEBUG_ = False
+DEBUG_ = True
 
 if not DEBUG_:
     from predictc import BSAcpp
@@ -73,7 +73,8 @@ def graphsave(adj, dir, to_sort=False):
 
 
 #@profile(precision=10)
-def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha, maxepochs, sparse=True, tau=100):
+def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
+    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False):
     rs = np.random.RandomState(seed=main_seed)
     batch_size_logits = 10000
     compute_ED = 0
@@ -95,7 +96,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
     D_vec = np.sum(A, axis=1).A1
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
-    optimal_batch_size = int(nnodes / np.median(D_vec))
+    #optimal_batch_size = int(nnodes / np.median(D_vec))
+    optimal_batch_size = int(nnodes / 24)
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
     labels = np.array(labels)
@@ -188,8 +190,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-
-    if True:
+    if False:
         data_name = "test1"
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
@@ -217,8 +218,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
     if False:
         adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
         sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
-
-    if True:
+    if False:
         m,n = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
         n = n - 1 
     else:
@@ -242,25 +242,28 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
     epsilon=0.1
     gamma=0.3
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
-    if not DEBUG_:
-        linear_time = 0
-            #Z, linear_time = \
-        py_bsa = BSAcpp()
-        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m, (1 - alpha) * Z.astype("float64"), Z.astype("float64"), tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
+    Q = np.concatenate([Q,Q])
+    Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
+    if bsa_type_cpp:
+        if not DEBUG_:
+            linear_time = 0
+                #Z, linear_time = \
+            py_bsa = BSAcpp()
+            py_bsa.bsa_operation(data_name, Ah.shape[0], n, m, (1 - alpha) * Z, Z, tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
     
-    print("="*100)
-    
-    Z, linear_time = \
-        BSA(A=Ah,
-            b=(1 - alpha) * Z,
-            x=Z,
-            niter=tau,
-            P=ED_mat,
-            Q = Q,
-            all_batches=all_batches,
-            epsilon=epsilon,
-            gamma=gamma,
-            seed=main_seed)
+        print("="*100)
+    else:
+        Z, linear_time = \
+            BSA(A=Ah,
+                b=(1 - alpha) * Z,
+                x=Z,
+                niter=tau,
+                P=ED_mat,
+                Q = Q,
+                all_batches=all_batches,
+                epsilon=epsilon,
+                gamma=gamma,
+                seed=main_seed)
 
 
     accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
@@ -276,15 +279,16 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, alpha
            num_edges
 
 
-dataset_name = 'citeseer'#'pubmed'
+dataset_name = 'cora_full'#'pubmed'
 bs = 64#512
 gamma = 0.3
 alpha = 0.9
 seed = 0
-tau = 1#100
+tau = 12#100
 niter = 1
 dim = 64
-mepoch = 16#  200
+mepoch = 50#  200
+bsa_type_cpp = True
 acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
     run(seed=seed,
         tau=tau,
@@ -296,4 +300,6 @@ acc_test, time_training, time_inference, time_inference_linear, time_total, num_
         load_check=False,
         dim=dim,
         alpha=alpha,
-        maxepochs=mepoch)
+        maxepochs=mepoch,
+        #bsa_type_cpp=bsa_type_cpp
+        )
