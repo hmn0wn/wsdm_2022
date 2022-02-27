@@ -16,7 +16,7 @@ namespace predictc{
         Eigen::Map<Eigen::MatrixXd> &P,
         Eigen::Map<Eigen::MatrixXd> &Q, 
         Eigen::Map<Eigen::MatrixXi> &all_batches, 
-        float epsilon, float gamma, uint seed);
+        float epsilon, float gamma, uint seed, uint threads_num);
     };
 }
 #endif // BSA_H

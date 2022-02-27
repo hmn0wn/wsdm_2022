@@ -14,6 +14,9 @@ setup(
 		#If you have installed eigen, you can configure your own path. When numpy references errors, you need to import its header file
 		install_requires=['Cython>=0.2.15','eigency>=1.77'],
 		packages=['little-try'],
-		python_requires='>=3'
+		python_requires='>=3',
+		
+		define_macros=[('CYTHON_COMPILE', 'true')]
+		#define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')]
 	))
 )

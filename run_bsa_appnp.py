@@ -16,16 +16,6 @@ import struct
 main_seed = 42
 tf.random.set_seed(0)
 
-DEBUG_ = True
-
-if not DEBUG_:
-    from predictc import BSAcpp
-else:
-    #vscode cant import cython modules in debug mode
-    class BSAcpp:
-        pass
-
-
 def graphsave(adj, dir, to_sort=False):
     if (sp.isspmatrix_csr(adj)):
         el = adj.indices
@@ -74,7 +64,15 @@ def graphsave(adj, dir, to_sort=False):
 
 #@profile(precision=10)
 def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
-    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False):
+    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False, thread_num=1):
+
+    if bsa_type_cpp:
+        from predictc import BSAcpp
+    else:
+    #vscode cant import cython modules in debug mode
+        class BSAcpp:
+            pass
+
     rs = np.random.RandomState(seed=main_seed)
     batch_size_logits = 10000
     compute_ED = 0
@@ -96,7 +94,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     D_vec = np.sum(A, axis=1).A1
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
-    #optimal_batch_size = int(nnodes / np.median(D_vec))
+    #optimal_batch_size = int(nnodes / np.median(D_vec)) средняя степень вершин
     optimal_batch_size = int(nnodes / 24)
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
@@ -184,13 +182,14 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     inference_time_batch = end - start
     Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
 
+    print("="*100)
     if False:
         data_name = "test"
         indptr = np.array([0, 2, 3, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-    if False:
+    if True:
         data_name = "test1"
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
@@ -218,38 +217,46 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     if False:
         adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
         sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
-    if False:
+    if True:
         m,n = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
-        n = n - 1 
     else:
         if data_name=="cora_full":
-            n, m = 18800, 125370
+            n, m = 18801, 125370
         if data_name=="pubmed":
-            n, m = 19717, 88648
+            n, m = 19718, 88648
         if data_name=='reddit':
-            n, m = 232965, 23446803
+            n, m = 232966, 23446803
         if data_name=='reddit':
-            n, m = 232965, 114615892
+            n, m = 232966, 114615892
         if data_name=='citeseer':
-            n, m = 2110, 7388
+            n, m = 2111, 7388
         if data_name=='test':
-            n,m = 3,6
+            n,m = 4,6
         if data_name=='test1':
-            n,m = 5,11
+            n,m = 7,15
 
     all_batches = np.array(all_batches)
     n_butches = len(all_batches)
     epsilon=0.1
     gamma=0.3
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
-    Q = np.concatenate([Q,Q])
+    
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
+    #all_batches = all_batches.ravel(order='F').reshape(\
+    #    all_batches.shape[0], all_batches.shape[1], order='F')
+
+    with open("./logs/bsa_serialized.py.log", "w") as f:
+        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {seed} {thread_num}")
+
     if bsa_type_cpp:
-        if not DEBUG_:
-            linear_time = 0
-                #Z, linear_time = \
-            py_bsa = BSAcpp()
-            py_bsa.bsa_operation(data_name, Ah.shape[0], n, m, (1 - alpha) * Z, Z, tau, ED_mat, Q, all_batches, epsilon, gamma, main_seed)
+        linear_time = 0
+        py_bsa = BSAcpp()
+        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,\
+             (1 - alpha) * Z,
+              Z, tau, 
+              ED_mat, 
+              Q, 
+              all_batches, epsilon, gamma, main_seed, thread_num)
     
         print("="*100)
     else:
@@ -279,18 +286,36 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
            num_edges
 
 
-dataset_name = 'cora_full'#'pubmed'
-bs = 64#512
-gamma = 0.3
-alpha = 0.9
-seed = 0
-tau = 12#100
-niter = 1
-dim = 64
-mepoch = 50#  200
-bsa_type_cpp = True
-acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-    run(seed=seed,
+import sys, getopt
+if __name__ == "__main__":
+    argv = (sys.argv[1:])
+    try:
+        opts, args = getopt.getopt(argv,"hc",["bsa_type_cpp",])
+    except getopt.GetoptError:
+        sys.exit(2)
+    
+    bs = 64#512
+    gamma = 0.3
+    alpha = 0.9
+    seed = 0
+    tau = 10#100
+    niter = 1
+    dim = 64
+    mepoch = 50#  200
+    bsa_type_cpp = False
+    thread_num = 1
+
+    for opt, arg in opts:
+        if opt == "-h":
+            print('python3 ./run_bsa_appnp.py -c\n\n')
+        elif opt == "--bsa_type_cpp" or opt == "-c":
+            bsa_type_cpp = True
+
+
+
+    dataset_name = 'cora_full'#'pubmed'
+    acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
+        run(seed=seed,
         tau=tau,
         btl_=bs,
         batch_size=bs,
@@ -301,5 +326,6 @@ acc_test, time_training, time_inference, time_inference_linear, time_total, num_
         dim=dim,
         alpha=alpha,
         maxepochs=mepoch,
-        #bsa_type_cpp=bsa_type_cpp
+        bsa_type_cpp=bsa_type_cpp,
+        thread_num=thread_num
         )
