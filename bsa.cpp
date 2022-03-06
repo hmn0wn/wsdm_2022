@@ -12,8 +12,6 @@
 #include <Eigen/Core>
 
 #include <igl/cotmatrix.h>
-#include <igl/slice.h>
-#include <igl/slice_into.h>
 
 using SpMat = Eigen::SparseMatrix<double>;
 using Trip = Eigen::Triplet<double>;
@@ -21,7 +19,7 @@ using Trip = Eigen::Triplet<double>;
 #define BR100 "===================================================================================================="
 #define BR50 "=================================================="
 #define BR25 "========================="
-#define MAX_PRINT_NUM 100
+#define MAX_PRINT_NUM 999999
 
 template <
     typename DerivedX,
@@ -48,9 +46,9 @@ void slice(
     return;
   }
 
-  assert(R.minCoeff() >= 0);
+  //assert(R.minCoeff() >= 0);
   assert(R.maxCoeff() < xm);
-  assert(C.minCoeff() >= 0);
+  //assert(C.minCoeff() >= 0);
   assert(C.maxCoeff() < xn);
 
         
@@ -76,14 +74,84 @@ void slice(
     {
       auto R_ = R[i];
       auto C_ = C[j];
+      if (R_ < 0 || C_ < 0) continue;
       auto X_ = X(R_, C_);
       Y(i, j) = X_;
     }
   }
 }
 
+
+template <
+    typename TX,
+    typename TY,
+    typename DerivedR,
+    typename DerivedC>
+void slice(
+    const Eigen::SparseMatrix<TX> &X,
+    const Eigen::DenseBase<DerivedR> &R,
+    const Eigen::DenseBase<DerivedC> &C,
+    Eigen::SparseMatrix<TY> &Y)
+{
+  int xm = X.rows();
+  int xn = X.cols();
+  int ym = R.size();
+  int yn = C.size();
+
+  // special case when R or C is empty
+  if (ym == 0 || yn == 0)
+  {
+    Y.resize(ym, yn);
+    return;
+  }
+
+  //assert(R.minCoeff() >= 0);
+  assert(R.maxCoeff() < xm);
+  //assert(C.minCoeff() >= 0);
+  assert(C.maxCoeff() < xn);
+
+  // Build reindexing maps for columns and rows
+  std::vector<std::vector<typename DerivedR::Scalar>> RI;
+  RI.resize(xm);
+  for (int i = 0; i < ym; i++)
+  {
+    if(R[i] < 0) continue;
+    RI[R[i]].push_back(i);
+  }
+  std::vector<std::vector<typename DerivedC::Scalar>> CI;
+  CI.resize(xn);
+  for (int i = 0; i < yn; i++)
+  {
+    if(C[i] < 0) continue;
+    CI[C[i]].push_back(i);
+  }
+
+  // Take a guess at the number of nonzeros (this assumes uniform distribution
+  // not banded or heavily diagonal)
+  std::vector<Eigen::Triplet<TY>> entries;
+  entries.reserve((X.nonZeros()/(X.rows()*X.cols())) * (ym*yn));
+
+  // Iterate over outside
+  for (int k = 0; k < X.outerSize(); ++k)
+  {
+    // Iterate over inside
+    for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it; ++it)
+    {
+      for (auto rit = RI[it.row()].begin(); rit != RI[it.row()].end(); rit++)
+      {
+        for (auto cit = CI[it.col()].begin(); cit != CI[it.col()].end(); cit++)
+        {
+          entries.emplace_back(*rit, *cit, it.value());
+        }
+      }
+    }
+  }
+  Y.resize(ym, yn);
+  Y.setFromTriplets(entries.begin(), entries.end());
+}
+
 template <typename DerivedX, typename DerivedY, typename DerivedR, typename DerivedC>
-IGL_INLINE void igl::slice_into(
+void slice_into(
   const Eigen::MatrixBase<DerivedX> & X,
   const Eigen::MatrixBase<DerivedR> & R,
   const Eigen::MatrixBase<DerivedC> & C,
@@ -97,9 +165,9 @@ IGL_INLINE void igl::slice_into(
   assert(C.size() == xn);
   int ym = Y.rows();
   int yn = Y.cols();
-  assert(R.minCoeff() >= 0);
+  //assert(R.minCoeff() >= 0);
   assert(R.maxCoeff() < ym);
-  assert(C.minCoeff() >= 0);
+  //assert(C.minCoeff() >= 0); 
   assert(C.maxCoeff() < yn);
 #endif
 
@@ -110,7 +178,10 @@ IGL_INLINE void igl::slice_into(
   {
     for(int j = 0;j<xn;j++)
     {
-      Y(int(R(i)),int(C(j))) = X(i,j);
+        auto R_ = R[i];
+        auto C_ = C[j];
+        if (R_ < 0 || C_ < 0) continue;
+      Y(int(R_),int(C_)) = X(i,j);
     }
   }
 }
@@ -469,14 +540,14 @@ namespace predictc{
         }
         
         assert(dataset_name.size() > 0);
-        assert(n_ > 0 && n_ < 20000 && m_ > 0 && m_ < 20000);
+        assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
 
         double prep_t, cclock_t;
         std::cout << BR100 << std::endl;
         std::cout << "BSA cpp" << std::endl;
         SpMat A(size_, size_);
         read_sparse_matrix(n_, m_, dataset_name, A);
-        //print_i("./logs", std::string("A"), A);
+        //print_i("./logs", std::string("A"), A);``````````````
 
         uint n_butches = all_batches.rows();
         std::vector<int> list_batches(n_butches);
@@ -527,8 +598,8 @@ namespace predictc{
             std::cout << "batch_id: " << batch_id << std::endl;
             //std::cout << "jump: " << jump << std::endl;
             //std::cout << "qjump: " << qjump << std::endl;
-            print("./logs/rows_mat.cpp.log", rows_, true);
-            print("./logs/cols_mat.cpp.log", cols_, true);
+            //print("./logs/rows_mat.cpp.log", rows_, true);
+            //print("./logs/cols_mat.cpp.log", cols_, true);
            
             //auto x_rows = x(Eigen::all, rows_);
             Eigen::MatrixXd x_rows;
@@ -536,7 +607,7 @@ namespace predictc{
             slice(x,rows_, x_cols_all, x_rows);
 
             SpMat A_rows_cols;
-            igl::slice(A,rows_,cols_,A_rows_cols);
+            slice(A,rows_,cols_,A_rows_cols);
 
             //auto x_cols = x(Eigen::all, cols_);
             Eigen::MatrixXd x_cols;
@@ -553,7 +624,7 @@ namespace predictc{
             Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
             //auto res = A_rows_cols*x_cols;
             
-            if (true)
+            if (false)
             {
                 print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
                 print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
@@ -564,7 +635,7 @@ namespace predictc{
                 print(std::string("./logs/loops") + std::string("/res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
             }
 
-            igl::slice_into(res, rows_, x_cols_all, x);
+            slice_into(res, rows_, x_cols_all, x);
             
             rows_id = batch_id;
             if(random_jump)
@@ -580,7 +651,7 @@ namespace predictc{
             //rows_ = copy cols_
             //cols_ =  all_batches.row(batch_id);
         }
-        print(std::string("./logs/x_res_mat.cpp.log"), x, true);
+        print(std::string("./logs/x_res_mat.cpp.log"), x, false);
         //writeToCSVfile("test.csv", A);
         //writeToBitmap("test.bmp", A);
         //saveMarket(A, "test.save");
@@ -646,7 +717,7 @@ int main()
     read_mat("./logs/x_mat.py.log", x);
     read_mat("./logs/P_mat.py.log", P);
     read_mat("./logs/Q_mat.py.log", Q);
-    read_mat("./logs/all_batches_mat.py.log", all_batches);
+    read_mat("./logs/all_batches_squared_mat.py.log", all_batches);
     read_mat("./logs/x_res_mat.py.log", res_py);
     
     auto b_ = Eigen::Map<Eigen::MatrixXd>(b.data(), b.rows(), b.cols());
@@ -669,9 +740,9 @@ int main()
     read_mat("./logs/x_res_mat.cpp.log", res_cpp);
 
     std::cout << BR50 << std::endl;
-    std::cout << "sum cpp: " << res_cpp.sum() << std::endl;
-    std::cout << "sum py: " << res_py.sum() << std::endl;
-    std::cout << "sum: " << (res_cpp - res_py).sum() << std::endl;
+    std::cout << "sum cpp : " << res_cpp.sum() << std::endl;
+    std::cout << "sum py  : " << res_py.sum() << std::endl;
+    std::cout << "diff sum: " << (res_cpp - res_py).sum() << std::endl;
 
     return 0;
 }

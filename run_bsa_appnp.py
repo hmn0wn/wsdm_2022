@@ -94,8 +94,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     D_vec = np.sum(A, axis=1).A1
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
-    #optimal_batch_size = int(nnodes / np.median(D_vec)) средняя степень вершин
-    optimal_batch_size = int(nnodes / 24)
+    #optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
+    optimal_batch_size = int(nnodes / 12)
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
     labels = np.array(labels)
@@ -189,7 +189,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-    if True:
+    if False:
         data_name = "test1"
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
@@ -211,7 +211,15 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
             np.array([0.051, 0.052], dtype=np.float32),\
             np.array([0.061, 0.062], dtype=np.float32)])
 
-        all_batches = [np.array([0,1,2], dtype=np.int32), np.array([3,4,5], dtype=np.int32)]
+        all_batches = [np.array([0], dtype=np.int32), np.array([1,2], dtype=np.int32), np.array([3,4,5], dtype=np.int32)]
+        
+        np.random.seed(main_seed)
+        ED_mat = np.random.rand(3,3)
+        row_sums = ED_mat.sum(axis=1)
+        ED_mat = ED_mat / row_sums[:, np.newaxis]
+
+        tau=1
+
         test_idx = [4,5]
         labels_test = [1,1]
     if False:
@@ -235,17 +243,36 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         if data_name=='test1':
             n,m = 7,15
 
-    all_batches = np.array(all_batches)
+    #all_batches = [np.array([0,1], dtype=np.int32), np.array([3,4,5], dtype=np.int32), np.array([3,4,5,8], dtype=np.int32)]
     n_butches = len(all_batches)
-    epsilon=0.1
+    max_len = len(max(all_batches, key=len))
+    all_batches_squared = []
+    for b in all_batches:
+        diff = np.empty(max_len - len(b), dtype=np.int32)
+        diff.fill(-1)
+        all_batches_squared.append(np.concatenate((b, diff), axis=0))
+
+    all_batches_squared = np.array(all_batches_squared)
+    all_batches_squared = all_batches_squared.ravel(order='F')\
+    .reshape(all_batches_squared.shape[0], all_batches_squared.shape[1], order='F')
+    
+    epsilon=0.1 
     gamma=0.3
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
     
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
-    all_batches = all_batches.ravel(order='F').reshape(all_batches.shape[0], all_batches.shape[1], order='F')
-
+    
     with open("./logs/bsa_serialized.py.log", "w") as f:
         f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {main_seed} {thread_num}")
+
+    rows_id_seq = [0,]
+    rs = np.random.RandomState(seed=seed)
+    list_batches = np.arange(n_butches)
+    for i in range(tau):
+        p = Q[rows_id_seq[i]]
+        #print(f"sum p: {sum(p)}")
+        rows_id_seq.append(rs.choice(list_batches, 1, p=p)[0])
+        print(f"{i}: {rows_id_seq[i]} <- {rows_id_seq[i+1]}")
 
     if bsa_type_cpp:
         linear_time = 0
@@ -255,7 +282,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
               Z, tau, 
               ED_mat, 
               Q, 
-              all_batches, epsilon, gamma, main_seed, thread_num)
+              all_batches_squared, epsilon, gamma, main_seed, thread_num)
     
         print("="*100)
     else:
@@ -267,6 +294,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
                 P=ED_mat,
                 Q = Q,
                 all_batches=all_batches,
+                all_batches_squared=all_batches_squared,
                 epsilon=epsilon,
                 gamma=gamma,
                 seed=main_seed)
@@ -297,7 +325,7 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 10#100
+    tau = 100#100
     niter = 1
     dim = 64
     mepoch = 50#  200
