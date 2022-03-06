@@ -242,11 +242,10 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
     
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
-    #all_batches = all_batches.ravel(order='F').reshape(\
-    #    all_batches.shape[0], all_batches.shape[1], order='F')
+    all_batches = all_batches.ravel(order='F').reshape(all_batches.shape[0], all_batches.shape[1], order='F')
 
     with open("./logs/bsa_serialized.py.log", "w") as f:
-        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {seed} {thread_num}")
+        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {main_seed} {thread_num}")
 
     if bsa_type_cpp:
         linear_time = 0

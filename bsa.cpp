@@ -15,6 +15,72 @@
 #include <igl/slice.h>
 #include <igl/slice_into.h>
 
+using SpMat = Eigen::SparseMatrix<double>;
+using Trip = Eigen::Triplet<double>;
+
+#define BR100 "===================================================================================================="
+#define BR50 "=================================================="
+#define BR25 "========================="
+#define MAX_PRINT_NUM 100
+
+template <
+    typename DerivedX,
+    typename DerivedR,
+    typename DerivedC,
+    typename DerivedY>
+void slice(
+    const Eigen::DenseBase<DerivedX> &X,
+    const Eigen::DenseBase<DerivedR> &R,
+    const Eigen::DenseBase<DerivedC> &C,
+    Eigen::PlainObjectBase<DerivedY> &Y)
+{
+#ifndef NDEBUG
+  int xm = X.rows();
+  int xn = X.cols();
+#endif
+  int ym = R.size();
+  int yn = C.size();
+
+  // special case when R or C is empty
+  if (ym == 0 || yn == 0)
+  {
+    Y.resize(ym, yn);
+    return;
+  }
+
+  assert(R.minCoeff() >= 0);
+  assert(R.maxCoeff() < xm);
+  assert(C.minCoeff() >= 0);
+  assert(C.maxCoeff() < xn);
+
+        
+  // Resize output
+  Y.resize(ym, yn);
+  if(false)
+  {
+    std::cout << "R: " << R.rows() << " : " << R.cols() << std::endl;
+    std::cout << "C: " << C.rows() << " : " << C.cols() << std::endl;
+    std::cout << "X: " << X.rows() << " : " << X.cols() << std::endl;
+    std::cout << "Y: " << Y.rows() << " : " << Y.cols() << std::endl;
+#ifndef NDEBUG
+    std::cout << "xm: " << xm << std::endl;
+    std::cout << "xn: " << xn << std::endl;
+#endif
+    std::cout << "ym: " << ym << std::endl;
+    std::cout << "yn: " << yn << std::endl;
+  }
+  // loop over output rows, then columns
+  for (int i = 0; i < ym; i++)
+  {
+    for (int j = 0; j < yn; j++)
+    {
+      auto R_ = R[i];
+      auto C_ = C[j];
+      auto X_ = X(R_, C_);
+      Y(i, j) = X_;
+    }
+  }
+}
 
 template <typename DerivedX, typename DerivedY, typename DerivedR, typename DerivedC>
 IGL_INLINE void igl::slice_into(
@@ -48,13 +114,6 @@ IGL_INLINE void igl::slice_into(
     }
   }
 }
-
-using SpMat = Eigen::SparseMatrix<double>;
-using Trip = Eigen::Triplet<double>;
-
-std::string br100 = "====================================================================================================";
-std::string br50 = "==================================================";
-std::string br25 = "=========================";
 
 template <typename Derived>
 void write_to_csvfile(std::string name, const Eigen::SparseMatrix<Derived>& matrix)
@@ -137,6 +196,125 @@ void write_to_bitmap(std::string name, const Eigen::SparseMatrix<Derived>& matri
     fclose(f);
 }
 
+template <typename Derived>
+void print(std::string path,
+const Eigen::MatrixBase<Derived>& matrix, bool to_print = false)
+{
+    std::ofstream fcpplog(path);
+    //const static Eigen::IOFormat MatFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, " ", "\n");
+    //fcpplog << matrix.format(MatFormat);
+    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
+    std::cout.precision(7);
+    if (to_print) std::cout << path << std::endl;
+    for (uint i = 0; i < MAX_PRINT_NUM && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix(i, j) << " ";
+            if (to_print) std::cout << matrix(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+template <typename Derived>
+void print(std::string path,
+const Eigen::SparseMatrix<Derived>& matrix, bool to_print = false)
+{
+    std::ofstream fcpplog(path);
+    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
+    //fcpplog << matrix.format(MatFormat);
+    std::cout.precision(7);
+    if (to_print) std::cout << path << std::endl;
+    for (uint i = 0; i < MAX_PRINT_NUM && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix.coeff(i, j) << " ";
+            if (to_print) std::cout << matrix.coeff(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+template <typename Derived>
+void print_i(std::string path,
+const Eigen::SparseMatrix<Derived>& matrix)
+{
+    std::ofstream fcpplog(path);
+    //fcpplog << matrix.format(MatFormat);
+    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
+    std::cout.precision(7);
+    for (uint i = 0; i < MAX_PRINT_NUM && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
+        {
+            double el = matrix.coeff(i, j);
+            double eps = 0.001;
+            if(el - eps > 0.0)
+            {
+                fcpplog << i << "\t" << j << "\t\t: " << el << std::endl;
+            }
+        }
+    }
+}
+
+template<typename XprType, typename RowIndices, typename ColIndices>
+void print(std::string path, const Eigen::IndexedView<XprType, RowIndices, ColIndices>& matrix, bool to_print = false)
+{
+    std::ofstream fcpplog(path);
+    std::cout.precision(7);
+    if (to_print) std::cout << path << std::endl;
+    for (uint i = 0; i < MAX_PRINT_NUM && i < matrix.rows(); ++i)
+    {
+        for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
+        {
+            fcpplog << matrix(i, j) << " ";
+            if (to_print) std::cout << matrix(i, j) << " ";
+        }
+        fcpplog << std::endl;
+        if (to_print) std::cout << std::endl;
+    }
+}
+
+template<typename T>
+void print(std::string path, const std::vector<T>& vec, bool to_print = false)
+{
+    std::ofstream fcpplog(path);
+    std::cout.precision(7);
+    if (to_print) std::cout << path << std::endl;
+    for (uint i = 0; i < MAX_PRINT_NUM && i < vec.size(); ++i)
+    {
+        fcpplog << vec[i] << " ";
+        if (to_print) std::cout << vec[i] << " ";
+    }
+    if (to_print) std::cout << std::endl;
+    fcpplog << std::endl;
+}
+
+template <typename Derived>
+void read_mat(std::string path, Eigen::PlainObjectBase<Derived>& matrix)
+{
+    typedef typename Derived::Scalar Scalar;
+    std::ifstream fcpplog(path);
+    assert(!fcpplog.fail());
+    uint n, m;
+    fcpplog >> n >> m;
+    std::cout << std::endl << path  << std::endl << "shape: " << n << ' ' << m << std::endl;
+    matrix.resize(n,m);
+    for (uint i = 0; i < n; ++i)
+    {
+        for (uint j = 0; j < m; ++j)
+        {
+            double tmp;
+            fcpplog >> tmp; 
+            matrix(i, j) = (Scalar)tmp;
+        }
+    }
+}
+
 void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
 {
 
@@ -152,7 +330,9 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
         size_t rtn = fread(el.data(), sizeof el[0], el.size(), f1);
         if(rtn!=m_)
         {
-            std::cout<<"Error! "<<dataset_el<<" Incorrect read! " << rtn <<"\r"<<std::endl;
+            std::cout << "Error! " << dataset_el << " Incorrect read! " << std::endl;
+            std::cout << "m_ " << m_ << " rtn " << rtn << std::endl;
+            assert(false);
         }
         fclose(f1);
     }
@@ -171,7 +351,8 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
         uint rtn = fread(pl.data(), sizeof pl[0], pl.size(), f2);
         if(rtn!=n_)
         {
-            std::cout<<"Error! "<<dataset_pl<<" Incorrect read!" << rtn << " " << n_ <<"\r"<<std::endl;
+            std::cout << "Error! " << dataset_pl << " Incorrect read!" << std::endl;
+            std::cout << "n_ " << n_ << " rtn " << rtn << std::endl;
             assert(false);
         }
         fclose(f2);
@@ -191,14 +372,15 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
         size_t rtn = fread(dl.data(), sizeof dl[0], dl.size(), f3);
         if(rtn!=m_)
         {
-            std::cout<<"Error! "<<dataset_dl<<" Incorrect read!" << rtn << " " << m_ <<"\r"<<std::endl;
+            std::cout << "Error! " << dataset_dl << " Incorrect read!" << std::endl;
+            std::cout << "m_ " << m_ << " rtn " << rtn << std::endl;
             assert(false);
         }
         fclose(f3);
     }
     else
     {
-        std::cout<<dataset_pl<<" Not Exists."<<"\r"<<std::endl;
+        std::cout << dataset_pl << " Not Exists." << std::endl;
         assert(false);
         exit(1);
     }
@@ -242,114 +424,6 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
     A.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-uint maxn = 100;
-
-template <typename Derived>
-void print_mat(std::string path,
-const Eigen::MatrixBase<Derived>& matrix, bool to_print = false)
-{
-    std::ofstream fcpplog(path);
-    //const static Eigen::IOFormat MatFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, " ", "\n");
-    //fcpplog << matrix.format(MatFormat);
-    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
-    std::cout.precision(7);
-    if (to_print) std::cout << path << std::endl;
-    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
-    {
-        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
-        {
-            fcpplog << matrix(i, j) << " ";
-            if (to_print) std::cout << matrix(i, j) << " ";
-        }
-        fcpplog << std::endl;
-        if (to_print) std::cout << std::endl;
-    }
-}
-
-template <typename Derived>
-void read_mat(std::string path, Eigen::PlainObjectBase<Derived>& matrix)
-{
-    typedef typename Derived::Scalar Scalar;
-    std::ifstream fcpplog(path);
-    assert(!fcpplog.fail());
-    uint n, m;
-    fcpplog >> n >> m;
-    std::cout << std::endl << path  << std::endl << "shape: " << n << ' ' << m << std::endl;
-    matrix.resize(n,m);
-    for (uint i = 0; i < n; ++i)
-    {
-        for (uint j = 0; j < m; ++j)
-        {
-            double tmp;
-            fcpplog >> tmp; 
-            matrix(i, j) = (Scalar)tmp;
-        }
-    }
-}
-
-template <typename Derived>
-void print_mat(std::string path,
-const Eigen::SparseMatrix<Derived>& matrix, bool to_print = false)
-{
-    std::ofstream fcpplog(path);
-    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
-    //fcpplog << matrix.format(MatFormat);
-    std::cout.precision(7);
-    if (to_print) std::cout << path << std::endl;
-    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
-    {
-        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
-        {
-            fcpplog << matrix.coeff(i, j) << " ";
-            if (to_print) std::cout << matrix.coeff(i, j) << " ";
-        }
-        fcpplog << std::endl;
-        if (to_print) std::cout << std::endl;
-    }
-}
-
-template <typename Derived>
-void print_mat_i(std::string path,
-const Eigen::SparseMatrix<Derived>& matrix)
-{
-    std::ofstream fcpplog(path);
-    //fcpplog << matrix.format(MatFormat);
-    fcpplog << matrix.rows() << " " << matrix.cols() << std::endl;
-    std::cout.precision(7);
-    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
-    {
-        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
-        {
-            double el = matrix.coeff(i, j);
-            double eps = 0.001;
-            if(el - eps > 0.0)
-            {
-                fcpplog << i << "\t" << j << "\t\t: " << el << std::endl;
-            }
-        }
-    }
-}
-
-template<typename XprType, typename RowIndices, typename ColIndices>
-void print_mat(std::string path, const Eigen::IndexedView<XprType, RowIndices, ColIndices>& matrix, bool to_print = false)
-{
-    std::ofstream fcpplog(path);
-    uint maxn = 10;
-    std::cout.precision(7);
-    if (to_print) std::cout << path << std::endl;
-    for (uint i = 0; i < maxn && i < matrix.rows(); ++i)
-    {
-        for (uint j = 0; j < maxn && j < matrix.cols(); ++j)
-        {
-            fcpplog << matrix(i, j) << " ";
-            if (to_print) std::cout << matrix(i, j) << " ";
-        }
-        fcpplog << std::endl;
-        if (to_print) std::cout << std::endl;
-    }
-}
-
-
 namespace predictc{
     Bsa::Bsa()
     {}
@@ -362,6 +436,8 @@ namespace predictc{
         Eigen::Map<Eigen::MatrixXi> &all_batches, 
         float epsilon, float gamma, uint seed, uint threads_num)
     {
+        if(true)
+        {
             std::cout << "dataset name: " << dataset_name << std::endl;
             std::cout << "size_: " << size_ << "n: " << n_ << std::endl << "m: " << m_ << std::endl;
             std::cout << "b:" << b.rows() << " " << b.cols() << std::endl;
@@ -373,14 +449,15 @@ namespace predictc{
             std::cout << "epsilon" << epsilon << std::endl;
             std::cout << "gamma" << gamma << std::endl;
             std::cout << "seed" << seed << std::endl;
+        }
 
         if(true)
         {
-            print_mat("./logs/b_mat.cpp.log", b);
-            print_mat("./logs/x_mat.cpp.log", x);
-            print_mat("./logs/P_mat.cpp.log", P);
-            print_mat("./logs/Q_mat.cpp.log", Q);
-            print_mat("./logs/all_batches_mat.cpp.log", all_batches);
+            print("./logs/b_mat.cpp.log", b);
+            print("./logs/x_mat.cpp.log", x);
+            print("./logs/P_mat.cpp.log", P);
+            print("./logs/Q_mat.cpp.log", Q);
+            print("./logs/all_batches_mat.cpp.log", all_batches);
 
             std::ofstream bsa_serialized("./logs/bsa_serialized.cpp.log");
             bsa_serialized << dataset_name << " " << size_ 
@@ -390,15 +467,16 @@ namespace predictc{
             << " " << seed << " " << threads_num;
             bsa_serialized.close();
         }
+        
         assert(dataset_name.size() > 0);
         assert(n_ > 0 && n_ < 20000 && m_ > 0 && m_ < 20000);
 
         double prep_t, cclock_t;
-        std::cout << br100 << std::endl;
+        std::cout << BR100 << std::endl;
         std::cout << "BSA cpp" << std::endl;
         SpMat A(size_, size_);
         read_sparse_matrix(n_, m_, dataset_name, A);
-        //print_mat_i("./logs", std::string("A"), A);
+        //print_i("./logs", std::string("A"), A);
 
         uint n_butches = all_batches.rows();
         std::vector<int> list_batches(n_butches);
@@ -410,7 +488,7 @@ namespace predictc{
         std::vector<std::discrete_distribution<int> > distributions(Q.rows());
         for(int i=0; i<Q.rows(); ++i)
         {
-            //print_mat(std::string("./logs") + std::string("Q_") + std::to_string(i) + std::string("_mat.cpp.log"));
+            //print(std::string("./logs") + std::string("Q_") + std::to_string(i) + std::string("_mat.cpp.log"));
             std::discrete_distribution<int>(Q.row(i).data(), Q.row(i).data()+Q.row(i).size());
         }
 
@@ -439,7 +517,7 @@ namespace predictc{
         start_t = clock();
         for(uint iter=0; iter < niter; ++iter)
         {
-            std::cout << br50 << std::endl;
+            std::cout << BR50 << std::endl;
             auto rows_ = all_batches.row(rows_id);
             auto cols_ = all_batches.row(batch_id);
             auto jump = P(rows_id, batch_id);
@@ -449,25 +527,25 @@ namespace predictc{
             std::cout << "batch_id: " << batch_id << std::endl;
             //std::cout << "jump: " << jump << std::endl;
             //std::cout << "qjump: " << qjump << std::endl;
-            print_mat("./logs/rows_mat.cpp.log", rows_, true);
-            print_mat("./logs/cols_mat.cpp.log", cols_, true);
+            print("./logs/rows_mat.cpp.log", rows_, true);
+            print("./logs/cols_mat.cpp.log", cols_, true);
            
             //auto x_rows = x(Eigen::all, rows_);
             Eigen::MatrixXd x_rows;
             Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
-            igl::slice(x,rows_, x_cols_all, x_rows);
+            slice(x,rows_, x_cols_all, x_rows);
 
             SpMat A_rows_cols;
             igl::slice(A,rows_,cols_,A_rows_cols);
 
             //auto x_cols = x(Eigen::all, cols_);
             Eigen::MatrixXd x_cols;
-            igl::slice(x,cols_, x_cols_all, x_cols);
+            slice(x,cols_, x_cols_all, x_cols);
 
             //auto b_rows = b(Eigen::all, rows_);
             Eigen::MatrixXd b_rows;
             Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
-            igl::slice(b,rows_, b_cols_all, b_rows);
+            slice(b,rows_, b_cols_all, b_rows);
 
             //auto cur_A = A(rows_, cols_);
             //x(rows_, Eigen::all) = x(rows_, Eigen::all) * 2;
@@ -477,11 +555,13 @@ namespace predictc{
             
             if (true)
             {
-                print_mat(std::string("./logs") + std::string("x_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
-                print_mat(std::string("./logs") + std::string("A_") + std::to_string(iter) + std::string("_mat.cpp.log"), A_rows_cols);
-                print_mat(std::string("./logs") + std::string("x_cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_cols);
-                print_mat(std::string("./logs") + std::string("b_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), b_rows);
-                print_mat(std::string("./logs") + std::string("res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
+                print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                print(std::string("./logs/loops") + std::string("/x_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                print(std::string("./logs/loops") + std::string("/A_") + std::to_string(iter) + std::string("_mat.cpp.log"), A_rows_cols);
+                print(std::string("./logs/loops") + std::string("/x_cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_cols);
+                print(std::string("./logs/loops") + std::string("/b_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), b_rows);
+                print(std::string("./logs/loops") + std::string("/res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
             }
 
             igl::slice_into(res, rows_, x_cols_all, x);
@@ -500,7 +580,7 @@ namespace predictc{
             //rows_ = copy cols_
             //cols_ =  all_batches.row(batch_id);
         }
-        print_mat(std::string("./logs") + std::string("x_res_mat.cpp.log"), x, true);
+        print(std::string("./logs/x_res_mat.cpp.log"), x, true);
         //writeToCSVfile("test.csv", A);
         //writeToBitmap("test.bmp", A);
         //saveMarket(A, "test.save");
@@ -508,7 +588,7 @@ namespace predictc{
         cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
         gettimeofday(&t_end, NULL);
         prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
-        std::cout << br50 << std::endl;
+        std::cout << BR50 << std::endl;
         std::cout<<"cpp BSA time: "<<prep_t<<" s"<<"\r"<<std::endl;
         std::cout<<"cpp BSA clock time : "<<cclock_t<<" s"<<"\r"<<std::endl;
         return 0;
@@ -526,7 +606,7 @@ int main()
         command += filename;
         system(command.c_str());
     }
-    std::cout << br50 << std::endl;
+    std::cout << BR50 << std::endl;
 
     std::string dataset_name;
     uint size_;
@@ -588,7 +668,7 @@ int main()
     
     read_mat("./logs/x_res_mat.cpp.log", res_cpp);
 
-    std::cout << br50 << std::endl;
+    std::cout << BR50 << std::endl;
     std::cout << "sum cpp: " << res_cpp.sum() << std::endl;
     std::cout << "sum py: " << res_py.sum() << std::endl;
     std::cout << "sum: " << (res_cpp - res_py).sum() << std::endl;

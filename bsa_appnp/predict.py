@@ -60,13 +60,21 @@ def print_matsp_i(dir_name, mat_name, mat):
                 f.write(f"{str(i)}\t{str(j)}\t\t: {str(mat[i,j])}\n")
 
 
-def print_vec(vec_name, vec):
-    print(f"{vec_name}: ", end='')
-    for i, el in enumerate(vec):
-        print(el, end=" ")
-        if i > nmax:
-            break
-    print()
+def print_vec(dir_name, vec_name, vec, to_print=False):
+    import os
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    if to_print:
+        print(vec_name)
+    with open(f"{dir_name}/{vec_name}_mat.py.log", 'w') as f:
+        for i, el in enumerate(vec):
+            f.write(f"{el:0.5f} ")
+            if to_print:
+                print(f"{el:0.6f} ", end='')
+            if i == nmax-1:
+                break
+        if to_print:
+            print()
 
 # @profile(precision=10)
 
@@ -100,15 +108,15 @@ def BSA(A, b, x, all_batches, P, Q, niter=3, seed=0, epsilon=0.1, gamma=0.5):
         jump = P[rows_id, batch_id]
         qjump = Q[rows_id, batch_id]
         print(f"batch_id: {batch_id}")
-        if False:
+        if True:
             print(f"jump: {jump}")
             print(f"qjump: {qjump}")
-            print_vec("rows_", rows_)
-            print_vec("cols_", cols_)
-            print_mat("./logs", f"x_rows{i}", x[rows_])
-            print_matsp("./logs", f"A_{i}", A[rows_, :][:, cols_])
-            print_mat("./logs", f"x_cols{i}", x[cols_])
-            print_mat("./logs", f"b_rows{i}", b[rows_])
+            print_vec("./logs/loops/", f"rows{i}", rows_)
+            print_vec("./logs/loops/", f"cols{i}", cols_)
+            print_mat("./logs/loops", f"x_rows{i}", x[rows_])
+            print_matsp("./logs/loops", f"A_{i}", A[rows_, :][:, cols_])
+            print_mat("./logs/loops/", f"x_cols{i}", x[cols_])
+            print_mat("./logs/loops/", f"b_rows{i}", b[rows_])
 
         res = x[rows_] + \
             1/(1+i)**gamma * jump/qjump *\
