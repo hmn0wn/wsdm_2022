@@ -12,11 +12,13 @@ cdef class BSAcpp:
     np.ndarray P, \
     np.ndarray Q, \
     np.ndarray all_batches, \
-    float epsilon, float gamma, unsigned int seed, unsigned int threads_num):
+    np.ndarray rows_id_seq, \
+    float epsilon, float gamma, unsigned int threads_num):
         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \
         Map[MatrixXd](b), \
         Map[MatrixXd](x), niter, \
         Map[MatrixXd](P), \
         Map[MatrixXd](Q), \
         Map[MatrixXi](all_batches), \
-        epsilon, gamma, seed, threads_num)
+        Map[MatrixXi](rows_id_seq),\
+        epsilon, gamma, threads_num)

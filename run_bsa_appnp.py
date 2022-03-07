@@ -262,39 +262,64 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
     
-    with open("./logs/bsa_serialized.py.log", "w") as f:
-        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {main_seed} {thread_num}")
-
-    rows_id_seq = [0,]
+   
+    rows_id_seq = [list(range(thread_num)),]
+    
     rs = np.random.RandomState(seed=seed)
     list_batches = np.arange(n_butches)
-    for i in range(tau):
-        p = Q[rows_id_seq[i]]
-        #print(f"sum p: {sum(p)}")
-        rows_id_seq.append(rs.choice(list_batches, 1, p=p)[0])
-        print(f"{i}: {rows_id_seq[i]} <- {rows_id_seq[i+1]}")
+    for i in range(tau//thread_num):
+        cur_bathces = []
+        for j in range(thread_num):
+            b = rows_id_seq[i][0]
+            while b in cur_bathces or b in rows_id_seq[i]:
+                b = rs.choice(list_batches, 1, p=Q[rows_id_seq[i][j]])[0]
+                
+            cur_bathces.append(b)
+        rows_id_seq.append(cur_bathces)
+        print(f"{i}: {rows_id_seq[i+1]} --> {rows_id_seq[i]}")
+    
+    rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
+    rows_id_seq = rows_id_seq.transpose()
+    
+
+    b = (1 - alpha) * Z
+    A = Ah
+    x = Z
+    P = ED_mat
+
+    with open("./logs/bsa_serialized.py.log", "w") as f:
+        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {thread_num}")
+        #print_matsp_i("./logs", f"A", A)
+    utils.print_mat("./logs", "b", b)
+    utils.print_mat("./logs", "x", x)
+    utils.print_mat("./logs", "P", P)
+    utils.print_mat("./logs", "Q", Q)
+    #utils.print_mat("./logs", "all_batches", all_batches)
+    utils.print_mat("./logs", "rows_id_seq", rows_id_seq)
+    utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
+
 
     if bsa_type_cpp:
         linear_time = 0
         py_bsa = BSAcpp()
         py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,\
-             (1 - alpha) * Z,
-              Z, tau, 
-              ED_mat, 
+             b,
+              x, tau, 
+              P, 
               Q, 
-              all_batches_squared, epsilon, gamma, main_seed, thread_num)
+              all_batches_squared, rows_id_seq, epsilon, gamma, thread_num)
     
         print("="*100)
     else:
         Z, linear_time = \
-            BSA(A=Ah,
-                b=(1 - alpha) * Z,
-                x=Z,
+            BSA(A=A,
+                b=b,
+                x=x,
                 niter=tau,
-                P=ED_mat,
+                P=P,
                 Q = Q,
                 all_batches=all_batches,
-                all_batches_squared=all_batches_squared,
+                rows_id_seq=rows_id_seq,
                 epsilon=epsilon,
                 gamma=gamma,
                 seed=main_seed)
@@ -325,12 +350,12 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 100#100
+    tau = 12#100
     niter = 1
     dim = 64
     mepoch = 50#  200
     bsa_type_cpp = False
-    thread_num = 1
+    thread_num = 4
 
     for opt, arg in opts:
         if opt == "-h":

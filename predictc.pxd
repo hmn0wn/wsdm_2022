@@ -15,4 +15,6 @@ cdef extern from "bsa.h" namespace "predictc":
         Map[MatrixXd] &, uint, \
         Map[MatrixXd] &, \
         Map[MatrixXd] &, \
-        Map[MatrixXi] &, float, float, uint, uint)
+        Map[MatrixXi] &, \
+        Map[MatrixXi] &, \
+        float, float, uint)

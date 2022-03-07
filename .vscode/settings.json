@@ -69,6 +69,7 @@
         "bit": "cpp",
         "*.expression": "cpp",
         "alignedvector3": "cpp",
-        "fft": "cpp"
+        "fft": "cpp",
+        "*.isph": "cpp"
     }
 }

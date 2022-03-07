@@ -3,6 +3,12 @@
 /* BEGIN: Cython Metadata
 {
     "distutils": {
+        "define_macros": [
+            [
+                "CYTHON_COMPILE",
+                "true"
+            ]
+        ],
         "depends": [
             "/home/user/miniconda3/envs/agp1/lib/python3.8/site-packages/eigency/eigency_cpp.h",
             "/home/user/miniconda3/envs/agp1/lib/python3.8/site-packages/numpy/core/include/numpy/arrayobject.h",
@@ -1752,7 +1758,6 @@ static const char __pyx_k_n[] = "n_";
 static const char __pyx_k_x[] = "x";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_name[] = "__name__";
-static const char __pyx_k_seed[] = "seed";
 static const char __pyx_k_size[] = "size";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_gamma[] = "gamma";
@@ -1769,6 +1774,7 @@ static const char __pyx_k_reduce_ex[] = "__reduce_ex__";
 static const char __pyx_k_ValueError[] = "ValueError";
 static const char __pyx_k_ImportError[] = "ImportError";
 static const char __pyx_k_all_batches[] = "all_batches";
+static const char __pyx_k_rows_id_seq[] = "rows_id_seq";
 static const char __pyx_k_threads_num[] = "threads_num";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
 static const char __pyx_k_dataset_name[] = "dataset_name";
@@ -1816,7 +1822,7 @@ static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_reduce;
 static PyObject *__pyx_n_s_reduce_cython;
 static PyObject *__pyx_n_s_reduce_ex;
-static PyObject *__pyx_n_s_seed;
+static PyObject *__pyx_n_s_rows_id_seq;
 static PyObject *__pyx_n_s_setstate;
 static PyObject *__pyx_n_s_setstate_cython;
 static PyObject *__pyx_n_s_size;
@@ -1825,7 +1831,7 @@ static PyObject *__pyx_n_s_threads_num;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_x;
 static int __pyx_pf_8predictc_6BSAcpp___cinit__(struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self, PyObject *__pyx_v_dataset_name, unsigned int __pyx_v_size, unsigned int __pyx_v_n_, unsigned int __pyx_v_m_, PyArrayObject *__pyx_v_b, PyArrayObject *__pyx_v_x, unsigned int __pyx_v_niter, PyArrayObject *__pyx_v_P, PyArrayObject *__pyx_v_Q, PyArrayObject *__pyx_v_all_batches, float __pyx_v_epsilon, float __pyx_v_gamma, unsigned int __pyx_v_seed, unsigned int __pyx_v_threads_num); /* proto */
+static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self, PyObject *__pyx_v_dataset_name, unsigned int __pyx_v_size, unsigned int __pyx_v_n_, unsigned int __pyx_v_m_, PyArrayObject *__pyx_v_b, PyArrayObject *__pyx_v_x, unsigned int __pyx_v_niter, PyArrayObject *__pyx_v_P, PyArrayObject *__pyx_v_Q, PyArrayObject *__pyx_v_all_batches, PyArrayObject *__pyx_v_rows_id_seq, float __pyx_v_epsilon, float __pyx_v_gamma, unsigned int __pyx_v_threads_num); /* proto */
 static PyObject *__pyx_pf_8predictc_6BSAcpp_4__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_8predictc_6BSAcpp_6__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
@@ -1930,9 +1936,9 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
   PyArrayObject *__pyx_v_P = 0;
   PyArrayObject *__pyx_v_Q = 0;
   PyArrayObject *__pyx_v_all_batches = 0;
+  PyArrayObject *__pyx_v_rows_id_seq = 0;
   float __pyx_v_epsilon;
   float __pyx_v_gamma;
-  unsigned int __pyx_v_seed;
   unsigned int __pyx_v_threads_num;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
@@ -1941,7 +1947,7 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("bsa_operation (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_dataset_name,&__pyx_n_s_size,&__pyx_n_s_n,&__pyx_n_s_m,&__pyx_n_s_b,&__pyx_n_s_x,&__pyx_n_s_niter,&__pyx_n_s_P,&__pyx_n_s_Q,&__pyx_n_s_all_batches,&__pyx_n_s_epsilon,&__pyx_n_s_gamma,&__pyx_n_s_seed,&__pyx_n_s_threads_num,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_dataset_name,&__pyx_n_s_size,&__pyx_n_s_n,&__pyx_n_s_m,&__pyx_n_s_b,&__pyx_n_s_x,&__pyx_n_s_niter,&__pyx_n_s_P,&__pyx_n_s_Q,&__pyx_n_s_all_batches,&__pyx_n_s_rows_id_seq,&__pyx_n_s_epsilon,&__pyx_n_s_gamma,&__pyx_n_s_threads_num,0};
     PyObject* values[14] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
@@ -2039,19 +2045,19 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
         }
         CYTHON_FALLTHROUGH;
         case 10:
-        if (likely((values[10] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_epsilon)) != 0)) kw_args--;
+        if (likely((values[10] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_rows_id_seq)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("bsa_operation", 1, 14, 14, 10); __PYX_ERR(1, 9, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case 11:
-        if (likely((values[11] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_gamma)) != 0)) kw_args--;
+        if (likely((values[11] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_epsilon)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("bsa_operation", 1, 14, 14, 11); __PYX_ERR(1, 9, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case 12:
-        if (likely((values[12] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_seed)) != 0)) kw_args--;
+        if (likely((values[12] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_gamma)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("bsa_operation", 1, 14, 14, 12); __PYX_ERR(1, 9, __pyx_L3_error)
         }
@@ -2093,10 +2099,10 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
     __pyx_v_P = ((PyArrayObject *)values[7]);
     __pyx_v_Q = ((PyArrayObject *)values[8]);
     __pyx_v_all_batches = ((PyArrayObject *)values[9]);
-    __pyx_v_epsilon = __pyx_PyFloat_AsFloat(values[10]); if (unlikely((__pyx_v_epsilon == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
-    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[11]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
-    __pyx_v_seed = __Pyx_PyInt_As_unsigned_int(values[12]); if (unlikely((__pyx_v_seed == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
-    __pyx_v_threads_num = __Pyx_PyInt_As_unsigned_int(values[13]); if (unlikely((__pyx_v_threads_num == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L3_error)
+    __pyx_v_rows_id_seq = ((PyArrayObject *)values[10]);
+    __pyx_v_epsilon = __pyx_PyFloat_AsFloat(values[11]); if (unlikely((__pyx_v_epsilon == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 16, __pyx_L3_error)
+    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[12]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 16, __pyx_L3_error)
+    __pyx_v_threads_num = __Pyx_PyInt_As_unsigned_int(values[13]); if (unlikely((__pyx_v_threads_num == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(1, 16, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -2111,7 +2117,8 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_P), __pyx_ptype_5numpy_ndarray, 1, "P", 0))) __PYX_ERR(1, 12, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_Q), __pyx_ptype_5numpy_ndarray, 1, "Q", 0))) __PYX_ERR(1, 13, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_all_batches), __pyx_ptype_5numpy_ndarray, 1, "all_batches", 0))) __PYX_ERR(1, 14, __pyx_L1_error)
-  __pyx_r = __pyx_pf_8predictc_6BSAcpp_2bsa_operation(((struct __pyx_obj_8predictc_BSAcpp *)__pyx_v_self), __pyx_v_dataset_name, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_v_b, __pyx_v_x, __pyx_v_niter, __pyx_v_P, __pyx_v_Q, __pyx_v_all_batches, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_seed, __pyx_v_threads_num);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rows_id_seq), __pyx_ptype_5numpy_ndarray, 1, "rows_id_seq", 0))) __PYX_ERR(1, 15, __pyx_L1_error)
+  __pyx_r = __pyx_pf_8predictc_6BSAcpp_2bsa_operation(((struct __pyx_obj_8predictc_BSAcpp *)__pyx_v_self), __pyx_v_dataset_name, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_v_b, __pyx_v_x, __pyx_v_niter, __pyx_v_P, __pyx_v_Q, __pyx_v_all_batches, __pyx_v_rows_id_seq, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_threads_num);
 
   /* function exit code */
   goto __pyx_L0;
@@ -2122,7 +2129,7 @@ static PyObject *__pyx_pw_8predictc_6BSAcpp_3bsa_operation(PyObject *__pyx_v_sel
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self, PyObject *__pyx_v_dataset_name, unsigned int __pyx_v_size, unsigned int __pyx_v_n_, unsigned int __pyx_v_m_, PyArrayObject *__pyx_v_b, PyArrayObject *__pyx_v_x, unsigned int __pyx_v_niter, PyArrayObject *__pyx_v_P, PyArrayObject *__pyx_v_Q, PyArrayObject *__pyx_v_all_batches, float __pyx_v_epsilon, float __pyx_v_gamma, unsigned int __pyx_v_seed, unsigned int __pyx_v_threads_num) {
+static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8predictc_BSAcpp *__pyx_v_self, PyObject *__pyx_v_dataset_name, unsigned int __pyx_v_size, unsigned int __pyx_v_n_, unsigned int __pyx_v_m_, PyArrayObject *__pyx_v_b, PyArrayObject *__pyx_v_x, unsigned int __pyx_v_niter, PyArrayObject *__pyx_v_P, PyArrayObject *__pyx_v_Q, PyArrayObject *__pyx_v_all_batches, PyArrayObject *__pyx_v_rows_id_seq, float __pyx_v_epsilon, float __pyx_v_gamma, unsigned int __pyx_v_threads_num) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -2134,20 +2141,21 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
   eigency::Map<Eigen::MatrixXd>  __pyx_t_7;
   eigency::Map<Eigen::MatrixXd>  __pyx_t_8;
   eigency::Map<Eigen::MatrixXi>  __pyx_t_9;
+  eigency::Map<Eigen::MatrixXi>  __pyx_t_10;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("bsa_operation", 0);
 
-  /* "predictc.pyx":16
- *     np.ndarray all_batches, \
- *     float epsilon, float gamma, unsigned int seed, unsigned int threads_num):
+  /* "predictc.pyx":17
+ *     np.ndarray rows_id_seq, \
+ *     float epsilon, float gamma, unsigned int threads_num):
  *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \             # <<<<<<<<<<<<<<
  *         Map[MatrixXd](b), \
  *         Map[MatrixXd](x), niter, \
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_dataset_name, __pyx_n_s_encode); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 16, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_dataset_name, __pyx_n_s_encode); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_2))) {
@@ -2161,14 +2169,14 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
   }
   __pyx_t_1 = (__pyx_t_3) ? __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3) : __Pyx_PyObject_CallNoArg(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 16, __pyx_L1_error)
+  if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_4 = __pyx_convert_string_from_py_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 16, __pyx_L1_error)
+  __pyx_t_4 = __pyx_convert_string_from_py_std__in_string(__pyx_t_1); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 17, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "predictc.pyx":17
- *     float epsilon, float gamma, unsigned int seed, unsigned int threads_num):
+  /* "predictc.pyx":18
+ *     float epsilon, float gamma, unsigned int threads_num):
  *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \
  *         Map[MatrixXd](b), \             # <<<<<<<<<<<<<<
  *         Map[MatrixXd](x), niter, \
@@ -2178,10 +2186,10 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
     __pyx_t_5 = eigency::Map<Eigen::MatrixXd> (__pyx_v_b);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 17, __pyx_L1_error)
+    __PYX_ERR(1, 18, __pyx_L1_error)
   }
 
-  /* "predictc.pyx":18
+  /* "predictc.pyx":19
  *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \
  *         Map[MatrixXd](b), \
  *         Map[MatrixXd](x), niter, \             # <<<<<<<<<<<<<<
@@ -2192,10 +2200,10 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
     __pyx_t_6 = eigency::Map<Eigen::MatrixXd> (__pyx_v_x);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 18, __pyx_L1_error)
+    __PYX_ERR(1, 19, __pyx_L1_error)
   }
 
-  /* "predictc.pyx":19
+  /* "predictc.pyx":20
  *         Map[MatrixXd](b), \
  *         Map[MatrixXd](x), niter, \
  *         Map[MatrixXd](P), \             # <<<<<<<<<<<<<<
@@ -2206,44 +2214,58 @@ static PyObject *__pyx_pf_8predictc_6BSAcpp_2bsa_operation(struct __pyx_obj_8pre
     __pyx_t_7 = eigency::Map<Eigen::MatrixXd> (__pyx_v_P);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 19, __pyx_L1_error)
+    __PYX_ERR(1, 20, __pyx_L1_error)
   }
 
-  /* "predictc.pyx":20
+  /* "predictc.pyx":21
  *         Map[MatrixXd](x), niter, \
  *         Map[MatrixXd](P), \
  *         Map[MatrixXd](Q), \             # <<<<<<<<<<<<<<
  *         Map[MatrixXi](all_batches), \
- *         epsilon, gamma, seed, threads_num)
+ *         Map[MatrixXi](rows_id_seq),\
  */
   try {
     __pyx_t_8 = eigency::Map<Eigen::MatrixXd> (__pyx_v_Q);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 20, __pyx_L1_error)
+    __PYX_ERR(1, 21, __pyx_L1_error)
   }
 
-  /* "predictc.pyx":21
+  /* "predictc.pyx":22
  *         Map[MatrixXd](P), \
  *         Map[MatrixXd](Q), \
  *         Map[MatrixXi](all_batches), \             # <<<<<<<<<<<<<<
- *         epsilon, gamma, seed, threads_num)
+ *         Map[MatrixXi](rows_id_seq),\
+ *         epsilon, gamma, threads_num)
  */
   try {
     __pyx_t_9 = eigency::Map<Eigen::MatrixXi> (__pyx_v_all_batches);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 21, __pyx_L1_error)
+    __PYX_ERR(1, 22, __pyx_L1_error)
   }
 
-  /* "predictc.pyx":16
- *     np.ndarray all_batches, \
- *     float epsilon, float gamma, unsigned int seed, unsigned int threads_num):
+  /* "predictc.pyx":23
+ *         Map[MatrixXd](Q), \
+ *         Map[MatrixXi](all_batches), \
+ *         Map[MatrixXi](rows_id_seq),\             # <<<<<<<<<<<<<<
+ *         epsilon, gamma, threads_num)
+ */
+  try {
+    __pyx_t_10 = eigency::Map<Eigen::MatrixXi> (__pyx_v_rows_id_seq);
+  } catch(...) {
+    __Pyx_CppExn2PyErr();
+    __PYX_ERR(1, 23, __pyx_L1_error)
+  }
+
+  /* "predictc.pyx":17
+ *     np.ndarray rows_id_seq, \
+ *     float epsilon, float gamma, unsigned int threads_num):
  *         return self.c_bsa.bsa_operation(dataset_name.encode(),size, n_, m_, \             # <<<<<<<<<<<<<<
  *         Map[MatrixXd](b), \
  *         Map[MatrixXd](x), niter, \
  */
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_bsa.bsa_operation(__pyx_t_4, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_t_5, __pyx_t_6, __pyx_v_niter, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_seed, __pyx_v_threads_num)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 16, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->c_bsa.bsa_operation(__pyx_t_4, __pyx_v_size, __pyx_v_n_, __pyx_v_m_, __pyx_t_5, __pyx_t_6, __pyx_v_niter, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_t_10, __pyx_v_epsilon, __pyx_v_gamma, __pyx_v_threads_num)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -5079,7 +5101,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_reduce, __pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_cython, __pyx_k_reduce_cython, sizeof(__pyx_k_reduce_cython), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_ex, __pyx_k_reduce_ex, sizeof(__pyx_k_reduce_ex), 0, 0, 1, 1},
-  {&__pyx_n_s_seed, __pyx_k_seed, sizeof(__pyx_k_seed), 0, 0, 1, 1},
+  {&__pyx_n_s_rows_id_seq, __pyx_k_rows_id_seq, sizeof(__pyx_k_rows_id_seq), 0, 0, 1, 1},
   {&__pyx_n_s_setstate, __pyx_k_setstate, sizeof(__pyx_k_setstate), 0, 0, 1, 1},
   {&__pyx_n_s_setstate_cython, __pyx_k_setstate_cython, sizeof(__pyx_k_setstate_cython), 0, 0, 1, 1},
   {&__pyx_n_s_size, __pyx_k_size, sizeof(__pyx_k_size), 0, 0, 1, 1},

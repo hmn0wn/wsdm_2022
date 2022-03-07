@@ -4,15 +4,8 @@ from memory_profiler import profile
 from timeit import default_timer as timer
 from bsa_appnp.read_utils import utils
 
-def BSA(A, b, x, all_batches, all_batches_squared, P, Q, niter=3, seed=0, epsilon=0.1, gamma=0.5):
+def BSA(A, b, x, all_batches, rows_id_seq, P, Q, niter=3, seed=0, epsilon=0.1, gamma=0.5):
     print("BSA python")
-    #print_matsp_i("./logs", f"A", A)
-    utils.print_mat("./logs", "b", b)
-    utils.print_mat("./logs", "x", x)
-    utils.print_mat("./logs", "P", P)
-    utils.print_mat("./logs", "Q", Q)
-    #utils.print_mat("./logs", "all_batches", all_batches)
-    utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
 
     rs = np.random.RandomState(seed=seed)
     n_butches = len(all_batches)
