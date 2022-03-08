@@ -70,6 +70,10 @@
         "*.expression": "cpp",
         "alignedvector3": "cpp",
         "fft": "cpp",
-        "*.isph": "cpp"
+        "*.isph": "cpp",
+        "core": "cpp",
+        "*.evaluator": "cpp",
+        "*.traits": "cpp",
+        "specialfunctions": "cpp"
     }
 }

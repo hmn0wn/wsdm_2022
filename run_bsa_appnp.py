@@ -95,7 +95,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
     #optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
-    optimal_batch_size = int(nnodes / 12)
+    optimal_batch_size = int(nnodes / 24)
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
     labels = np.array(labels)
@@ -350,13 +350,13 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 12#100
+    tau = 1200#100
     niter = 1
     dim = 64
     mepoch = 50#  200
     bsa_type_cpp = False
-    thread_num = 4
-
+    thread_num = 12
+    
     for opt, arg in opts:
         if opt == "-h":
             print('python3 ./run_bsa_appnp.py -c\n\n')

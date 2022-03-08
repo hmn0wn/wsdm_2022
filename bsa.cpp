@@ -14,6 +14,7 @@
 #define BR25 "========================="
 #define MAX_PRINT_NUM 999999
 
+
 template <
     typename DerivedX,
     typename DerivedR,
@@ -359,14 +360,14 @@ void print(std::string path, const std::vector<T>& vec, bool to_print = false)
 }
 
 template <typename Derived>
-void read_mat(std::string path, Eigen::PlainObjectBase<Derived>& matrix)
+void read_mat(std::string path, Eigen::PlainObjectBase<Derived>& matrix, bool to_print=false)
 {
     typedef typename Derived::Scalar Scalar;
     std::ifstream fcpplog(path);
     assert(!fcpplog.fail());
     uint n, m;
     fcpplog >> n >> m;
-    std::cout << std::endl << path  << std::endl << "shape: " << n << ' ' << m << std::endl;
+    if(to_print) std::cout << std::endl << path  << std::endl << "shape: " << n << ' ' << m << std::endl;
     matrix.resize(n,m);
     for (uint i = 0; i < n; ++i)
     {
@@ -490,15 +491,21 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
 
 namespace predictc{
 
-    std::atomic<bool> Bsa::worker_end;
-    std::atomic<bool> Bsa::worker_begin;
-    std::atomic<size_t> Bsa::waiting_workers;
+    std::atomic<bool> Bsa::worker_func_end_wall;
+    std::atomic<bool> Bsa::worker_func_begin_wall;
+    std::atomic<bool> Bsa::dispatcher_must_exit;
+    std::atomic<int> Bsa::waiting_workers;
+    std::atomic<int> Bsa::global_time;
+    std::atomic<int> Bsa::done_workers;
 
     Bsa::Bsa()
     {
-        worker_end = false;
-        worker_begin = false;
+        worker_func_begin_wall = true;
+		worker_func_end_wall = true;
         waiting_workers = 0;
+        global_time = 0;
+        dispatcher_must_exit = false;
+        done_workers = 0;
     }
     
     double Bsa::bsa_operation(std::string dataset_name, uint size_, uint n_, uint m_, 
@@ -514,14 +521,7 @@ namespace predictc{
         gamma = gamma_;
         threads_num = threads_num_;
 
-        n_butches = all_batches.rows();
-        list_batches.resize(n_butches);
-        for(uint i = 0; i < n_butches; ++i)
-        {
-            list_batches[i] = i;
-        }
-
-        if(true)
+        if(false)
         {
             std::cout << "dataset name: " << dataset_name << std::endl;
             std::cout << "size_: " << size_ << "n: " << n_ << std::endl << "m: " << m_ << std::endl;
@@ -542,6 +542,7 @@ namespace predictc{
             print("./logs/P_mat.cpp.log", P);
             print("./logs/Q_mat.cpp.log", Q);
             print("./logs/all_batches_mat.cpp.log", all_batches);
+            print("./logs/rows_id_seq_mat.cpp.log", rows_id_seq);
 
             std::ofstream bsa_serialized("./logs/bsa_serialized.cpp.log");
             bsa_serialized << dataset_name << " " << size_ 
@@ -553,10 +554,9 @@ namespace predictc{
         }
         
         assert(dataset_name.size() > 0);
-        assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
+        //assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
 
         double prep_t, cclock_t;
-        std::cout << BR100 << std::endl;
         std::cout << "BSA cpp" << std::endl;
         A.resize(size_, size_);
         read_sparse_matrix(n_, m_, dataset_name, A);
@@ -566,104 +566,204 @@ namespace predictc{
         clock_t start_t, end_t;
         gettimeofday(&t_start,NULL);
         start_t = clock();
-        
-        bsa_loop(b,x,P,Q,all_batches,rows_id_seq);
 
-        print(std::string("./logs/x_res_mat.cpp.log"), x, false);
-        //writeToCSVfile("test.csv", A);
-        //writeToBitmap("test.bmp", A);
-        //saveMarket(A, "test.save");
+        std::cout << BR50 << std::endl;
+        std::cout << "update: " << std::endl;
+        bsa_multithread(b,x,P,Q,all_batches,rows_id_seq);
+
         end_t = clock();
         cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
         gettimeofday(&t_end, NULL);
         prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
-        std::cout << BR50 << std::endl;
+        std::cout << std::endl << BR50 << std::endl;
         std::cout<<"cpp BSA time: "<<prep_t<<" s"<<"\r"<<std::endl;
         std::cout<<"cpp BSA clock time : "<<cclock_t<<" s"<<"\r"<<std::endl;
+
+        //writeToCSVfile("test.csv", A);
+        //writeToBitmap("test.bmp", A);
+        //saveMarket(A, "test.save");
+        print(std::string("./logs/x_res_mat.cpp.log"), x, false);
         return 0;
     }
 
-    void Bsa::bsa_loop(Eigen::Map<Eigen::MatrixXd> &b, 
-            Eigen::Map<Eigen::MatrixXd> &x,
-            Eigen::Map<Eigen::MatrixXd> &P,
-            Eigen::Map<Eigen::MatrixXd> &Q, 
-            Eigen::Map<Eigen::MatrixXi> &all_batches, 
-            Eigen::Map<Eigen::MatrixXi> &rows_id_seq)
+
+
+    void Bsa::bsa_multithread(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
     {
-        for(uint iter=0; iter < niter; ++iter)
+
+        std::vector<std::thread> ths;
+        int workers_count = rows_id_seq.rows(); 
+        waiting_workers = workers_count;
+        for (int i = 0; i < workers_count; ++i)
         {
-  
-            if (threads_num > 1)
+            //std::thread(&Bsa::bsa_worker, this, b,x,P,Q,all_batches,rows_id_seq, i).detach();
+            ths.push_back(std::thread(&Bsa::bsa_worker, this, b,x,P,Q,all_batches,rows_id_seq, i));
+        }
+
+        for (int i = 0; i < workers_count; ++i)
+        {
+            ths[i].join();
+        }
+
+        dispatcher_must_exit = true;
+        /*struct timeval t_start,t_end;
+        clock_t start_t, end_t;
+        gettimeofday(&t_start,NULL);
+        start_t = clock();
+        end_t = clock();
+        global_time.store(global_time.load() + delta);*/
+
+        while (!dispatcher_must_exit)
+        {
+            if (waiting_workers == 0) {
+
+                worker_func_begin_wall = false;
+                worker_func_end_wall = true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5/* - delta*/));
+            if (waiting_workers == workers_count)
+            {
+                if (done_workers == workers_count)
+                {
+                    dispatcher_must_exit = true;
+                }
+                //static int last_time = 0;
+                //int delta = global_time.load() - last_time;
+                //if (delta < 10)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10/* - delta*/));
+                //else
+                {
+                    //last_time = time;
+                    //...
+                    worker_func_begin_wall = true;
+                    worker_func_end_wall = false;
+                }
+            }
+        }
+       
+    }
+
+    void Bsa::bsa_worker(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
+            uint worker_index)
+    {
+        if(false)
+        {
+            print(std::string("./logs/workers") + std::string("/rows_id_seq_") + std::to_string(worker_index)
+            + std::string("_mat.cpp.log"), rows_id_seq, false);
+            std::string out_path = std::string("./logs/workers/bsa_worker_") + 
+                std::to_string(worker_index) + std::string(".cpp.log");
+
+            std::ofstream worker_out(out_path);
+        }
+
+        SpMat A_rows_cols;
+        Eigen::MatrixXd x_rows;
+        Eigen::MatrixXd x_cols;
+        Eigen::MatrixXd b_rows;
+
+
+        Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
+        Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
+
+        for(uint iter=0; iter < rows_id_seq.cols()-1; ++iter)
+        {
+            //worker_out << "iter: " << iter << std::endl;
+            //if (threads_num > 1)
             {
                 waiting_workers--;
-                while (worker_begin)
+                //while (worker_func_begin_wall)
                 {
                     std::this_thread::yield();
                 }
             }
 
-            std::cout << BR50 << std::endl;
+            if(true)
+            {
+                uint rows_id = rows_id_seq(worker_index, iter);
+                uint batch_id = rows_id_seq(worker_index, iter+1);
+
+                //std::cout << BR50 << std::endl;
                 auto rows_ = all_batches.row(rows_id);
                 auto cols_ = all_batches.row(batch_id);
                 auto jump = P(rows_id, batch_id);
                 auto qjump = Q(rows_id, batch_id);
                 jump *= 1; qjump*= 1;
 
-                std::cout << "batch_id: " << batch_id << std::endl;
-                //std::cout << "jump: " << jump << std::endl;
-                //std::cout << "qjump: " << qjump << std::endl;
-                //print("./logs/rows_mat.cpp.log", rows_, true);
-                //print("./logs/cols_mat.cpp.log", cols_, true);
-            
-                //auto x_rows = x(Eigen::all, rows_);
-                Eigen::MatrixXd x_rows;
-                Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
-                slice(x,rows_, x_cols_all, x_rows);
-
-                SpMat A_rows_cols;
-                slice(A,rows_,cols_,A_rows_cols);
-
-                //auto x_cols = x(Eigen::all, cols_);
-                Eigen::MatrixXd x_cols;
-                slice(x,cols_, x_cols_all, x_cols);
-
-                //auto b_rows = b(Eigen::all, rows_);
-                Eigen::MatrixXd b_rows;
-                Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
-                slice(b,rows_, b_cols_all, b_rows);
-
-                //auto cur_A = A(rows_, cols_);
-                //x(rows_, Eigen::all) = x(rows_, Eigen::all) * 2;
-                double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
-                Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
-                //auto res = A_rows_cols*x_cols;
-                
-                if (false)
+                if(false)
                 {
-                    print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
-                    print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
-                    print(std::string("./logs/loops") + std::string("/x_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
-                    print(std::string("./logs/loops") + std::string("/A_") + std::to_string(iter) + std::string("_mat.cpp.log"), A_rows_cols);
-                    print(std::string("./logs/loops") + std::string("/x_cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_cols);
-                    print(std::string("./logs/loops") + std::string("/b_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), b_rows);
-                    print(std::string("./logs/loops") + std::string("/res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
+                    std::cout << std::string(" ") + std::to_string(rows_id) + std::string("<-") \
+                    + std::to_string(batch_id) + std::string(" ");
+                    //worker_out << std::string(" ") + std::to_string(rows_id) + std::string("<-") + std::to_string(batch_id) + std::string(" ");
                 }
-
-                slice_into(res, rows_, x_cols_all, x);
+                if(false)
+                {
+                    //std::cout << "jump: " << jump << std::endl;
+                    //std::cout << "qjump: " << qjump << std::endl;
+                    //print("./logs/rows_mat.cpp.log", rows_, true);
+                    //print("./logs/cols_mat.cpp.log", cols_, true);
                 
-                rows_id = batch_id;
-                batch_i = (batch_i + 1)%n_butches;
-                batch_id = list_batches[batch_i];
+                    //slice(x,rows_, x_cols_all, x_rows);
+                    auto x_rows = x(rows_, Eigen::all);
 
-            if(threads_num > 1)
+                    slice(A,rows_,cols_,A_rows_cols);
+
+                    //slice(x,cols_, x_cols_all, x_cols);
+                    auto x_cols = x(cols_,Eigen::all);
+
+                    //slice(b,rows_, b_cols_all, b_rows);
+                    auto b_rows = b(rows_,Eigen::all);
+
+                    //auto cur_A = A(rows_, cols_);
+                    //x(rows_, Eigen::all) = x(rows_, Eigen::all) * 2;
+                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
+                    //auto res = A_rows_cols*x_cols;
+                    
+                    if (false)
+                    {
+                        print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/x_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/A_") + std::to_string(iter) + std::string("_mat.cpp.log"), A_rows_cols);
+                        print(std::string("./logs/loops") + std::string("/x_cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_cols);
+                        print(std::string("./logs/loops") + std::string("/b_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), b_rows);
+                        print(std::string("./logs/loops") + std::string("/res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
+                    }
+                    
+                    //std::cout << BR50 << std::endl;
+                    slice_into(res, rows_, x_cols_all, x);
+                }
+                else{
+                    slice(A,rows_,cols_,A_rows_cols);
+                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    x(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x(cols_,Eigen::all) - x(rows_, Eigen::all) + b(rows_,Eigen::all));
+                }
+                
+            }
+
+            //if(threads_num > 1)
             {
                 waiting_workers++;
-                while (worker_end)
+                //while (worker_func_end_wall)
                 {
                     std::this_thread::yield();
                 }
             }
         }
+        ++done_workers;
     }
 
 }
