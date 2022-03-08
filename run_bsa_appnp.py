@@ -95,7 +95,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
     #optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
-    optimal_batch_size = int(nnodes / 24)
+    optimal_batch_size = batch_size
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
     labels = np.array(labels)
@@ -267,6 +267,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     rs = np.random.RandomState(seed=seed)
     list_batches = np.arange(n_butches)
+    assert(thread_num < n_butches * 2)
     for i in range(tau//thread_num):
         cur_bathces = []
         for j in range(thread_num):
@@ -280,7 +281,6 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
     rows_id_seq = rows_id_seq.transpose()
-    
 
     b = (1 - alpha) * Z
     A = Ah
@@ -302,12 +302,14 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     if bsa_type_cpp:
         linear_time = 0
         py_bsa = BSAcpp()
-        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,\
-             b,
+        
+        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,
+              b,
               x, tau, 
               P, 
               Q, 
               all_batches_squared, rows_id_seq, epsilon, gamma, thread_num)
+        
     
         print("="*100)
     else:
@@ -346,16 +348,16 @@ if __name__ == "__main__":
     except getopt.GetoptError:
         sys.exit(2)
     
-    bs = 64#512
+    bs = 512
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 1200#100
+    tau = 100#100
     niter = 1
     dim = 64
-    mepoch = 50#  200
+    mepoch = 200#  200
     bsa_type_cpp = False
-    thread_num = 12
+    thread_num = 6
     
     for opt, arg in opts:
         if opt == "-h":

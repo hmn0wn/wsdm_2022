@@ -25,6 +25,15 @@ namespace predictc{
         Eigen::Map<Eigen::MatrixXi> &rows_id_seq,
         float epsilon, float gamma_, uint threads_num_);
         
+        void bsa(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq
+        );
+
         void bsa_multithread(
             Eigen::Ref<Eigen::MatrixXd> b, 
             Eigen::Ref<Eigen::MatrixXd> x,
@@ -42,6 +51,25 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXi> all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
             uint worker_index
+        );
+
+        void bsa_multithread1(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq
+        );
+
+        void bsa_worker1(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
+            uint worker_index, uint work_index
         );
 
         static std::atomic<bool> worker_func_end_wall;

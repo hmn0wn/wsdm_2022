@@ -489,6 +489,27 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
     A.setFromTriplets(triplets.begin(), triplets.end());
 }
 
+std::vector<Eigen::Map<Eigen::VectorXi>> remove_negative(Eigen::Map<Eigen::MatrixXi> &all_batches)
+{
+    std::vector<Eigen::Map<Eigen::VectorXi>> all_batches_;
+    for(uint i = 0; i < all_batches.rows(); ++i)
+    {
+        std::vector<int> v;
+        int length = 0;
+        for(uint j = 0; j < all_batches.cols(); ++j)
+        {
+            auto el = all_batches(i, j);
+            if(el >= 0)
+            {
+                ++length;
+                v.push_back(el);
+            }
+        }
+        all_batches_.push_back(Eigen::Map<Eigen::VectorXi>(all_batches.row(i).data(), length));
+    }
+    return all_batches_;
+} 
+
 namespace predictc{
 
     std::atomic<bool> Bsa::worker_func_end_wall;
@@ -520,7 +541,7 @@ namespace predictc{
         niter = niter_;
         gamma = gamma_;
         threads_num = threads_num_;
-
+        auto all_batches_ = remove_negative(all_batches);
         if(false)
         {
             std::cout << "dataset name: " << dataset_name << std::endl;
@@ -542,7 +563,9 @@ namespace predictc{
             print("./logs/P_mat.cpp.log", P);
             print("./logs/Q_mat.cpp.log", Q);
             print("./logs/all_batches_mat.cpp.log", all_batches);
+            print("./logs/all_batches_vec.cpp.log", all_batches_);
             print("./logs/rows_id_seq_mat.cpp.log", rows_id_seq);
+            
 
             std::ofstream bsa_serialized("./logs/bsa_serialized.cpp.log");
             bsa_serialized << dataset_name << " " << size_ 
@@ -569,7 +592,10 @@ namespace predictc{
 
         std::cout << BR50 << std::endl;
         std::cout << "update: " << std::endl;
-        bsa_multithread(b,x,P,Q,all_batches,rows_id_seq);
+        
+        bsa(b,x,P,Q,all_batches,rows_id_seq);
+        //bsa_multithread(b,x,P,Q,all_batches,rows_id_seq);
+        //bsa_multithread1(b,x,P,Q,all_batches,rows_id_seq);
 
         end_t = clock();
         cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
@@ -586,7 +612,78 @@ namespace predictc{
         return 0;
     }
 
+    void Bsa::bsa(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+    {
+        SpMat A_rows_cols;
+        Eigen::MatrixXd x_rows;
+        Eigen::MatrixXd x_cols;
+        Eigen::MatrixXd b_rows;
 
+        Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
+        Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
+
+        for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
+        {
+            for(uint iter=0; iter < rows_id_seq.cols()-1; ++iter)
+            {
+                std::cout << worker_index << " " << iter << std::endl;
+                uint rows_id = rows_id_seq(worker_index, iter);
+                uint batch_id = rows_id_seq(worker_index, iter+1);
+
+                //std::cout << BR50 << std::endl;
+                auto rows_ = all_batches.row(rows_id);
+                auto cols_ = all_batches.row(batch_id);
+                auto jump = P(rows_id, batch_id);
+                auto qjump = Q(rows_id, batch_id);
+                jump *= 1; qjump*= 1;
+
+                
+                if(false)
+                {
+                    slice(x,rows_, x_cols_all, x_rows);
+                    //auto x_rows = x(rows_, Eigen::all);
+
+                    slice(A,rows_,cols_,A_rows_cols);
+
+                    slice(x,cols_, x_cols_all, x_cols);
+                    //auto x_cols = x(cols_,Eigen::all);
+
+                    slice(b,rows_, b_cols_all, b_rows);
+                    //auto b_rows = b(rows_,Eigen::all);
+
+                    //auto cur_A = A(rows_, cols_);
+                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
+                    
+                    if (false)
+                    {
+                        print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/x_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
+                        print(std::string("./logs/loops") + std::string("/A_") + std::to_string(iter) + std::string("_mat.cpp.log"), A_rows_cols);
+                        print(std::string("./logs/loops") + std::string("/x_cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_cols);
+                        print(std::string("./logs/loops") + std::string("/b_rows") + std::to_string(iter) + std::string("_mat.cpp.log"), b_rows);
+                        print(std::string("./logs/loops") + std::string("/res") + std::to_string(iter) + std::string("_mat.cpp.log"), res, true);
+                    }
+                    
+                    slice_into(res, rows_, x_cols_all, x);
+                }
+                else
+                {
+                    slice(A,rows_,cols_,A_rows_cols);
+                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    x(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x(cols_,Eigen::all) - x(rows_, Eigen::all) + b(rows_,Eigen::all));
+                }
+            }
+        }
+       
+    }
 
     void Bsa::bsa_multithread(
             Eigen::Ref<Eigen::MatrixXd> b, 
@@ -765,6 +862,57 @@ namespace predictc{
         }
         ++done_workers;
     }
+
+    void Bsa::bsa_multithread1(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+    {
+
+        for(uint work_index=0; work_index < rows_id_seq.cols()-1; ++work_index)
+        {
+            std::vector<std::thread> ths;
+        
+            for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
+            {
+                ths.push_back(std::thread(&Bsa::bsa_worker1, this, b,x,P,Q,all_batches,rows_id_seq, worker_index, work_index));
+            }
+
+            for (int i = 0; i < rows_id_seq.rows(); ++i)
+            {
+                ths[i].join();
+            }
+            std::vector<std::thread>().swap(ths);
+        }
+    }
+
+    void Bsa::bsa_worker1(
+            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q, 
+            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
+            uint worker_index, uint work_index)
+    {
+        SpMat A_rows_cols;
+        uint rows_id = rows_id_seq(worker_index, work_index);
+        uint batch_id = rows_id_seq(worker_index, work_index+1);
+
+        auto rows_ = all_batches.row(rows_id);
+        auto cols_ = all_batches.row(batch_id);
+        auto jump = P(rows_id, batch_id);
+        auto qjump = Q(rows_id, batch_id);
+        jump *= 1; qjump*= 1;
+
+        slice(A,rows_,cols_,A_rows_cols);
+        double q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
+        x(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x(cols_,Eigen::all) - x(rows_, Eigen::all) + b(rows_,Eigen::all));
+    }
+
 
 }
 #ifndef CYTHON_COMPILE
