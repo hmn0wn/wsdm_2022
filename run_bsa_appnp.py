@@ -253,8 +253,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         all_batches_squared.append(np.concatenate((b, diff), axis=0))
 
     all_batches_squared = np.array(all_batches_squared)
-    all_batches_squared = all_batches_squared.ravel(order='F')\
-    .reshape(all_batches_squared.shape[0], all_batches_squared.shape[1], order='F')
+    all_batches_squared = all_batches_squared.ravel(order='C')\
+    .reshape(all_batches_squared.shape[0], all_batches_squared.shape[1], order='C')
     
     epsilon=0.1 
     gamma=0.3
@@ -262,36 +262,50 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
     
-   
-    rows_id_seq = [list(range(thread_num)),]
-    
-    rs = np.random.RandomState(seed=seed)
     list_batches = np.arange(n_butches)
-    assert(thread_num < n_butches * 2)
-    for i in range(tau//thread_num):
-        cur_bathces = []
-        for j in range(thread_num):
-            b = rows_id_seq[i][0]
-            while b in cur_bathces or b in rows_id_seq[i]:
-                b = rs.choice(list_batches, 1, p=Q[rows_id_seq[i][j]])[0]
-                
-            cur_bathces.append(b)
-        rows_id_seq.append(cur_bathces)
-        print(f"{i}: {rows_id_seq[i+1]} --> {rows_id_seq[i]}")
+    rs = np.random.RandomState(seed=seed)
+    if False:
+        rows_id_seq = [list(range(thread_num)),]
+        
+        assert(thread_num < n_butches * 2)
+        for i in range(tau//thread_num):
+            cur_bathces = []
+            for j in range(thread_num):
+                b = rows_id_seq[i][0]
+                while b in cur_bathces: # or b in rows_id_seq[i]:
+                    b = rs.choice(list_batches, 1, p=Q[rows_id_seq[i][j]])[0]
+                    
+                cur_bathces.append(b)
+            rows_id_seq.append(cur_bathces)
+            print(f"{i}: {rows_id_seq[i+1]} --> {rows_id_seq[i]}")
     
-    rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
-    rows_id_seq = rows_id_seq.transpose()
+        rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
+        rows_id_seq = rows_id_seq.transpose()
+    else:
+        assert(tau % 2)
+        rows_id_seq = []
+        for i in range(tau):
+            cur_bathces = []
+            for j in range(n_butches):
+                b = rs.choice(list_batches, 1, p=Q[j])[0]
+                cur_bathces.append(b)
+            rows_id_seq.append(cur_bathces)
+
+        rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
+        rows_id_seq = rows_id_seq.transpose()
 
     b = (1 - alpha) * Z
     A = Ah
     x = Z
     P = ED_mat
+    x_prev = copy.deepcopy(x)
 
     with open("./logs/bsa_serialized.py.log", "w") as f:
         f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {thread_num}")
         #print_matsp_i("./logs", f"A", A)
     utils.print_mat("./logs", "b", b)
     utils.print_mat("./logs", "x", x)
+    utils.print_mat("./logs", "x_prev", x_prev)
     utils.print_mat("./logs", "P", P)
     utils.print_mat("./logs", "Q", Q)
     #utils.print_mat("./logs", "all_batches", all_batches)
@@ -299,12 +313,12 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
 
 
+    linear_time = 0
     if bsa_type_cpp:
-        linear_time = 0
         py_bsa = BSAcpp()
-        
         py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,
               b,
+              x_prev,
               x, tau, 
               P, 
               Q, 
@@ -313,9 +327,11 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
         print("="*100)
     else:
+        
         Z, linear_time = \
             BSA(A=A,
                 b=b,
+                x_prev=x_prev,
                 x=x,
                 niter=tau,
                 P=P,
@@ -325,6 +341,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
                 epsilon=epsilon,
                 gamma=gamma,
                 seed=main_seed)
+                
 
 
     accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
@@ -348,11 +365,11 @@ if __name__ == "__main__":
     except getopt.GetoptError:
         sys.exit(2)
     
-    bs = 512
+    bs = 1024
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 100#100
+    tau = 11#100
     niter = 1
     dim = 64
     mepoch = 200#  200

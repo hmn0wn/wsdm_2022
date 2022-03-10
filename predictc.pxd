@@ -12,9 +12,10 @@ cdef extern from "bsa.h" namespace "predictc":
         Bsa() except+
         double bsa_operation(string, uint, uint, uint, \
         Map[MatrixXd] &, \
+        Map[MatrixXd] &, \
         Map[MatrixXd] &, uint, \
         Map[MatrixXd] &, \
         Map[MatrixXd] &, \
-        Map[MatrixXi] &, \
+        FlattenedMapWithOrder[Array, int, Dynamic, Dynamic, RowMajor] &, \
         Map[MatrixXi] &, \
         float, float, uint)

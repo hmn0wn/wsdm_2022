@@ -11,63 +11,87 @@
 typedef unsigned int uint;
 using SpMat = Eigen::SparseMatrix<double>;
 using Trip = Eigen::Triplet<double>;
+using MatrixXiRowMajor = Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using RowMajorArray = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
 namespace predictc{
     class Bsa{
         public:
         Bsa();
         double bsa_operation(std::string dataset_name,uint size_, uint n_, uint m_, 
-        Eigen::Map<Eigen::MatrixXd> &b, 
-        Eigen::Map<Eigen::MatrixXd> &x, uint niter_, 
+        Eigen::Map<Eigen::MatrixXd> &b,
+        Eigen::Map<Eigen::MatrixXd> &x_prev,
+        Eigen::Map<Eigen::MatrixXd> &x, uint niter_,
         Eigen::Map<Eigen::MatrixXd> &P,
-        Eigen::Map<Eigen::MatrixXd> &Q, 
-        Eigen::Map<Eigen::MatrixXi> &all_batches, 
+        Eigen::Map<Eigen::MatrixXd> &Q,
+        Eigen::Map<RowMajorArray> &all_batches,
         Eigen::Map<Eigen::MatrixXi> &rows_id_seq,
         float epsilon, float gamma_, uint threads_num_);
         
         void bsa(
-            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> b,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q, 
-            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXd> Q,
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq
         );
 
         void bsa_multithread(
-            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> b,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q, 
-            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq
         );
 
         void bsa_worker(
-            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> b,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q, 
-            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
             uint worker_index
         );
 
         void bsa_multithread1(
-            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> b,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q, 
-            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXd> Q,
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq
         );
 
         void bsa_worker1(
-            Eigen::Ref<Eigen::MatrixXd> b, 
+            Eigen::Ref<Eigen::MatrixXd> b,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q, 
-            Eigen::Ref<Eigen::MatrixXi> all_batches, 
+            Eigen::Ref<Eigen::MatrixXd> Q,
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
+            uint worker_index, uint work_index
+        );
+
+        void bsa_multithread_all(
+            Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q,
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq
+        );
+
+         void bsa_worker_all(
+            Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
+            Eigen::Ref<Eigen::MatrixXd> x,
+            Eigen::Ref<Eigen::MatrixXd> P,
+            Eigen::Ref<Eigen::MatrixXd> Q,
+            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
             uint worker_index, uint work_index
         );
