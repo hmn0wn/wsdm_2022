@@ -12,7 +12,7 @@
 
 #include "../../Eigen/Sparse"
 
-//#include "../../Eigen/src/Core/util/DisableStupidWarnings.h"
+#include "../../Eigen/src/Core/util/DisableStupidWarnings.h"
 
 #include <vector>
 #include <map>
@@ -24,6 +24,7 @@
 
 #ifdef EIGEN_GOOGLEHASH_SUPPORT
   #include <google/dense_hash_map>
+  #include <google/sparse_hash_map>
 #endif
 
 /**
@@ -48,6 +49,6 @@
 #include "src/SparseExtra/MatrixMarketIterator.h"
 #endif
 
-//#include "../../Eigen/src/Core/util/ReenableStupidWarnings.h"
+#include "../../Eigen/src/Core/util/ReenableStupidWarnings.h"
 
 #endif // EIGEN_SPARSE_EXTRA_MODULE_H
