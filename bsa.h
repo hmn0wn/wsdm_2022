@@ -30,6 +30,7 @@ namespace predictc{
         
         void bsa(
             Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
@@ -39,6 +40,7 @@ namespace predictc{
 
         void bsa_multithread(
             Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q, 
@@ -48,6 +50,7 @@ namespace predictc{
 
         void bsa_worker(
             Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q, 
@@ -58,6 +61,7 @@ namespace predictc{
 
         void bsa_multithread1(
             Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
@@ -67,6 +71,7 @@ namespace predictc{
 
         void bsa_worker1(
             Eigen::Ref<Eigen::MatrixXd> b,
+            Eigen::Ref<Eigen::MatrixXd> x_prev,
             Eigen::Ref<Eigen::MatrixXd> x,
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,

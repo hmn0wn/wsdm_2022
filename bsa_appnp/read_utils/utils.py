@@ -229,6 +229,20 @@ def print_mat(dir_name, mat_name, mat, to_print=False):
                 break
 
 
+
+
+nmax = 999999
+
+def read_mat(mat_name):
+    with open(f"{mat_name}", 'r') as f:
+        w, h = [float(x) for x in next(f).split()]
+        array = []
+        for line in f:
+            array.append([float(x) for x in line.split()])
+        
+    return np.array([np.array(el) for el in array])
+
+
 def print_matsp(dir_name, mat_name, mat, to_print=False):
     import os
     if not os.path.exists(dir_name):

@@ -94,8 +94,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     D_vec = np.sum(A, axis=1).A1
     Ah = calc_A_hat(A)
     nclasses = len(np.unique(labels))
-    #optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
-    optimal_batch_size = batch_size
+    optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
+    #optimal_batch_size = batch_size
     batch_all = np.array(list(set(all_n) - set(train_idx)))
     labels_test = labels[test_idx]
     labels = np.array(labels)
@@ -189,13 +189,13 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-    if False:
+    if True:
         data_name = "test1"
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
         data = np.array([0.01, 0.02, 0.01, 0.03, 0.04, 0.05, 0.06, 0.02, 0.05, 0.04, 0.03, 0.01, 0.02, 0.01, 0.01])
         Ah = sp.csr_matrix((data, (row, col)), shape=(6, 6))
-        print(Ah.toarray())
+        #print(Ah.toarray())
 
         Z = np.array([\
             #np.array([0.011, 0.012, 0.013, 0.014, 0.015, 0.016], dtype=np.float32),\
@@ -204,14 +204,22 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
             #np.array([0.041, 0.042, 0.043, 0.044, 0.045, 0.046], dtype=np.float32),\
             #np.array([0.051, 0.052, 0.053, 0.054, 0.055, 0.056], dtype=np.float32),\
             #np.array([0.061, 0.062, 0.063, 0.064, 0.065, 0.066], dtype=np.float32)])
-            np.array([0.011, 0.012], dtype=np.float32),\
-            np.array([0.021, 0.022], dtype=np.float32),\
-            np.array([0.031, 0.032], dtype=np.float32),\
-            np.array([0.041, 0.042], dtype=np.float32),\
-            np.array([0.051, 0.052], dtype=np.float32),\
-            np.array([0.061, 0.062], dtype=np.float32)])
+            np.array([11, 12], dtype=np.float32),\
+            np.array([21, 22], dtype=np.float32),\
+            np.array([31, 32], dtype=np.float32),\
+            np.array([41, 42], dtype=np.float32),\
+            np.array([51, 52], dtype=np.float32),\
+            np.array([61, 62], dtype=np.float32)])
 
-        all_batches = [np.array([0], dtype=np.int32), np.array([1,2], dtype=np.int32), np.array([3,4,5], dtype=np.int32)]
+        #all_batches = [\
+        # np.array([0], dtype=np.int32), \
+        # np.array([1,2], dtype=np.int32), \
+        # np.array([3,4,5], dtype=np.int32)]
+        
+        all_batches = [\
+            np.array([0], dtype=np.int32), \
+            np.array([1], dtype=np.int32), \
+            np.array([2], dtype=np.int32)]
         
         np.random.seed(main_seed)
         ED_mat = np.random.rand(3,3)
@@ -225,7 +233,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     if False:
         adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
         sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
-    if True:
+    if False:
         m,n = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
     else:
         if data_name=="cora_full":
@@ -323,11 +331,10 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
               P, 
               Q, 
               all_batches_squared, rows_id_seq, epsilon, gamma, thread_num)
-        
-    
-        print("="*100)
+        accuracy_ = accuracy_score(labels_test, np.argmax(x[test_idx], axis=1))
+
+        print("="*50)
     else:
-        
         Z, linear_time = \
             BSA(A=A,
                 b=b,
@@ -341,11 +348,11 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
                 epsilon=epsilon,
                 gamma=gamma,
                 seed=main_seed)
+        accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
                 
 
-
-    accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
     print('accuracy', accuracy_)
+    
     return accuracy_, \
            training_time, \
            inference_time_batch, \
@@ -356,16 +363,25 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
            compute_ED, \
            num_edges
 
+def check():
+
+    res_py = utils.read_mat("./logs/x_res_mat.py.log")
+    res_cpp = utils.read_mat("./logs/x_res_mat.cpp.log")
+
+    print(f"sum cpp : ", res_py.sum())
+    print(f"sum py  : ", res_cpp.sum())
+    print(f"diff sum: ", (res_cpp - res_py).sum())
+
 
 import sys, getopt
 if __name__ == "__main__":
     argv = (sys.argv[1:])
     try:
-        opts, args = getopt.getopt(argv,"hc",["bsa_type_cpp",])
+        opts, args = getopt.getopt(argv,"hpcka",[])
     except getopt.GetoptError:
         sys.exit(2)
     
-    bs = 1024
+    bs = 512
     gamma = 0.3
     alpha = 0.9
     seed = 0
@@ -375,28 +391,79 @@ if __name__ == "__main__":
     mepoch = 200#  200
     bsa_type_cpp = False
     thread_num = 6
-    
+    dataset_name = 'cora_full'#'pubmed'
+    load_check = False
+
     for opt, arg in opts:
         if opt == "-h":
             print('python3 ./run_bsa_appnp.py -c\n\n')
-        elif opt == "--bsa_type_cpp" or opt == "-c":
-            bsa_type_cpp = True
+        elif opt == "-p":
+            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
+                run(seed=seed,
+                tau=tau,
+                btl_=bs,
+                batch_size=bs,
+                niter=niter,
+                gamma=gamma,
+                data_name=dataset_name,
+                load_check=load_check,
+                dim=dim,
+                alpha=alpha,
+                maxepochs=mepoch,
+                bsa_type_cpp=False,
+                thread_num=thread_num
+            )
+        elif opt == "-c":
+            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
+                run(seed=seed,
+                tau=tau,
+                btl_=bs,
+                batch_size=bs,
+                niter=niter,
+                gamma=gamma,
+                data_name=dataset_name,
+                load_check=load_check,
+                dim=dim,
+                alpha=alpha,
+                maxepochs=mepoch,
+                bsa_type_cpp=True,
+                thread_num=thread_num
+            )
+        elif opt == "-k":
+            check()
+        elif opt == "-a":
+            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
+                run(seed=seed,
+                tau=tau,
+                btl_=bs,
+                batch_size=bs,
+                niter=niter,
+                gamma=gamma,
+                data_name=dataset_name,
+                load_check=load_check,
+                dim=dim,
+                alpha=alpha,
+                maxepochs=mepoch,
+                bsa_type_cpp=True,
+                thread_num=thread_num
+            )
+            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
+                run(seed=seed,
+                tau=tau,
+                btl_=bs,
+                batch_size=bs,
+                niter=niter,
+                gamma=gamma,
+                data_name=dataset_name,
+                load_check=load_check,
+                dim=dim,
+                alpha=alpha,
+                maxepochs=mepoch,
+                bsa_type_cpp=False,
+                thread_num=thread_num
+            )
+            check()
 
-
-
-    dataset_name = 'cora_full'#'pubmed'
-    acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-        run(seed=seed,
-        tau=tau,
-        btl_=bs,
-        batch_size=bs,
-        niter=niter,
-        gamma=gamma,
-        data_name=dataset_name,
-        load_check=False,
-        dim=dim,
-        alpha=alpha,
-        maxepochs=mepoch,
-        bsa_type_cpp=bsa_type_cpp,
-        thread_num=thread_num
-        )
+        
+    
+    
