@@ -18,4 +18,4 @@ cdef extern from "bsa.h" namespace "predictc":
         Map[MatrixXd] &, \
         FlattenedMapWithOrder[Array, int, Dynamic, Dynamic, RowMajor] &, \
         Map[MatrixXi] &, \
-        float, float, uint)
+        float, float, uint, uint, uint)

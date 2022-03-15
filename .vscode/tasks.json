@@ -17,8 +17,9 @@
 				"${fileDirname}/${fileBasenameNoExtension}",
 				"-std=c++11",
 				"-pthread",
-				"-B /home/user/miniconda3/envs/agp1/compiler_compat",
-				"-I${workspaceFolder}/eigen3",
+				//"-B /home/user/miniconda3/envs/agp1/compiler_compat",
+				//"-I${workspaceFolder}/eigen3",
+				"-I/usr/local/lib/python3.8/dist-packages/eigency/eigen_3.2.8",
                 "-I${workspaceFolder}/libigl/include",
 			],
 			"options": {

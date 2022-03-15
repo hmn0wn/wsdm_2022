@@ -4,9 +4,10 @@ from memory_profiler import profile
 from timeit import default_timer as timer
 from bsa_appnp.read_utils import utils
 
-def BSA(A, b, x_prev,x, all_batches, rows_id_seq, P, Q, niter=3, seed=0, epsilon=0.1, gamma=0.5):
+def BSA(A, b, x_prev,x, all_batches, rows_id_seq, P, Q, tau, niter=3, seed=0, epsilon=0.1, gamma=0.5, extra_logs=False):
     print("BSA python")
 
+    print("py tau: ", tau)
     n_butches = len(all_batches)
     start = timer()
     if(False):
@@ -39,7 +40,7 @@ def BSA(A, b, x_prev,x, all_batches, rows_id_seq, P, Q, niter=3, seed=0, epsilon
 
                 x[rows_] = res
     else:
-        for work_index in range(rows_id_seq.shape[1]):
+        for work_index in range(tau):
             for worker_index in range(rows_id_seq.shape[0]):
                 rows_id = worker_index
                 batch_id = rows_id_seq[worker_index, work_index]
@@ -60,7 +61,7 @@ def BSA(A, b, x_prev,x, all_batches, rows_id_seq, P, Q, niter=3, seed=0, epsilon
                         1/(1+work_index)**gamma * jump/qjump *\
                         (1 / jump * A[rows_, :][:, cols_] @ x_prev[cols_] -
                         x_prev[rows_] + b[rows_])
-                if True:
+                if extra_logs > 0:
                     #print(f"jump: {jump}")
                     #print(f"qjump: {qjump}")
                     findex = f"{work_index}_{worker_index}_{batch_id}->{rows_id}"

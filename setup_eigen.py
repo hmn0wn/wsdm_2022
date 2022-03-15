@@ -1,6 +1,20 @@
 from distutils.core import setup,Extension
 from Cython.Build import cythonize
+from Cython.Distutils import build_ext
 import eigency
+import os
+
+os.environ["CC"] = "/usr/bin/g++"
+os.environ["CXX"] = "/usr/bin/g++"
+
+
+#packageDir = os.path.dirname(__file__)
+#includedDir = [packageDir]
+#os.chdir(packageDir)
+
+#ext_modules = [
+#Extension("predictc", ["predictc.pyx"], include_dirs=includedDir),
+#]
 
 setup(
 	ext_modules=cythonize(Extension(

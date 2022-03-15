@@ -6,10 +6,12 @@
 #include <sys/time.h>
 #include <random>
 #include <map>
+#include <igl/cotmatrix.h>
 
-template <typename Derived>
+
+/*template <typename Derived>
 //inline typename Eigen::DenseBase< Derived >::RandomAccessLinSpacedReturnType 
-inline Derived
+Derived
 LinSpaced(
   typename Derived::Index size,
   const typename Derived::Scalar & low,
@@ -26,10 +28,9 @@ LinSpaced(
     return Derived::LinSpaced(size,low,high);
   }
 }
-
+*/
 #define BR100 "\n====================================================================================================\n"
 #define BR50 "\n==================================================\n"
-#define BR25 "\n=========================\n"
 #define MAX_PRINT_NUM 999999
 
 template <
@@ -505,27 +506,29 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
     }
 
     std::cout << "Read finished\r"<<std::endl;
+    if(false)
+    {
+        std::cout << "el: ";
+        for (uint i = 0; i < 20 && i < el.size(); ++i)
+        {
+            std::cout << el[i] << " ";
+        }
+        std::cout << std::endl;
 
-    std::cout << "el: ";
-    for (uint i = 0; i < 20 && i < el.size(); ++i)
-    {
-        std::cout << el[i] << " ";
+        std::cout << "pl: ";
+        for (uint i = 0; i < 20 && i < pl.size(); ++i)
+        {
+            std::cout << pl[i] << " ";
+        }
+        std::cout << std::endl;
+        
+        std::cout << "dl: ";
+        for (uint i = 0; i < 20 && i < dl.size(); ++i)
+        {
+            std::cout << dl[i] << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
-
-    std::cout << "pl: ";
-    for (uint i = 0; i < 20 && i < pl.size(); ++i)
-    {
-        std::cout << pl[i] << " ";
-    }
-    std::cout << std::endl;
-    
-    std::cout << "dl: ";
-    for (uint i = 0; i < 20 && i < dl.size(); ++i)
-    {
-        std::cout << dl[i] << " ";
-    }
-    std::cout << std::endl;
 
     std::vector<Trip> triplets;
     triplets.reserve(el.size());
@@ -545,7 +548,7 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
 
 std::vector<Eigen::Map<Eigen::VectorXi>> remove_negative(Eigen::Map<RowMajorArray> &all_batches)
 {
-    std::cout << BR25;
+    std::cout << BR50;
     std::vector<Eigen::Map<Eigen::VectorXi>> all_batches_;
     
     for(uint i = 0; i < all_batches.rows(); ++i)
@@ -565,7 +568,7 @@ std::vector<Eigen::Map<Eigen::VectorXi>> remove_negative(Eigen::Map<RowMajorArra
         //std::cout << std::endl;
         all_batches_.push_back(Eigen::Map<Eigen::VectorXi>(all_batches.matrix().row(i).data(), length));
     }
-    std::cout << BR25;
+    std::cout << BR50;
     return all_batches_;
 } 
 namespace predictc{
@@ -594,12 +597,13 @@ namespace predictc{
         Eigen::Map<Eigen::MatrixXd> &Q,
         Eigen::Map<RowMajorArray> &all_batches,
         Eigen::Map<Eigen::MatrixXi> &rows_id_seq,
-        float epsilon, float gamma_, uint threads_num_)
+        float epsilon, float gamma_, uint threads_num_, uint extra_logs, uint tau)
     {
         niter = niter_;
         gamma = gamma_;
         threads_num = threads_num_;
         auto all_batches_ = remove_negative(all_batches);
+
         if(false)
         {
             std::cout << "dataset name: " << dataset_name << std::endl;
@@ -612,9 +616,10 @@ namespace predictc{
             std::cout << "all_batches:" << all_batches.size() << " " << std::endl;
             std::cout << "epsilon" << epsilon << std::endl;
             std::cout << "gamma" << gamma << std::endl;
+            std::cout << "tau" << tau << std::endl;
         }
 
-        if(true)
+        if(extra_logs)
         {
             print("./logs/b_mat.cpp.log", b);
             print("./logs/x_mat.cpp.log", x);
@@ -630,7 +635,7 @@ namespace predictc{
             << " " << n_ << " " << m_ 
             << " " << niter 
             << " " << epsilon << " " << gamma
-            << " " << threads_num;
+            << " " << threads_num << " " << tau;
             bsa_serialized.close();
         }
         
@@ -651,10 +656,10 @@ namespace predictc{
         std::cout << BR50;
         std::cout << "update: ";
         
-        bsa(b,x_prev, x,P,Q,all_batches_,rows_id_seq);
-        //bsa_multithread(b,x,P,Q,all_batches_,rows_id_seq);
-        //bsa_multithread1(b, x,P,Q,all_batches_,rows_id_seq);
-        //bsa_multithread_all(b, x_prev,x,P,Q,all_batches_,rows_id_seq);
+        bsa(b,x_prev, x,P,Q,all_batches_,rows_id_seq, extra_logs, tau);
+        //bsa_multithread(b,x,P,Q,all_batches_,rows_id_seq, extra_logs, tau);
+        //bsa_multithread1(b, x,P,Q,all_batches_,rows_id_seq, extra_logs, tau);
+        //bsa_multithread_all(b, x_prev,x,P,Q,all_batches_,rows_id_seq, extra_logs, tau);
 
         end_t = clock();
         cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
@@ -678,21 +683,23 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches,
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau)
     {
         SpMat A_rows_cols;
         Eigen::MatrixXd x_rows;
         Eigen::MatrixXd x_cols;
         Eigen::MatrixXd b_rows;
 
-        Eigen::VectorXi x_cols_all = LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
-        Eigen::VectorXi b_cols_all = LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
+        Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
+        Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
 
-        for(uint iter=0; iter < rows_id_seq.cols(); ++iter)
+        std::cout << "bsa tau: " << tau << std::endl;
+        for(uint iter=0; iter < tau; ++iter)
         {
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
                 //std::cout << worker_index << " " << iter << std::endl;
+                //std::cout << "extra_logs: " << extra_logs << std::endl;
                 uint rows_id = worker_index;
                 uint batch_id = rows_id_seq(worker_index, iter);
 
@@ -721,7 +728,7 @@ namespace predictc{
                     double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
                     
-                    if (false)
+                    if (extra_logs)
                     {
                         print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), rows_);
                         print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), cols_);
@@ -746,11 +753,10 @@ namespace predictc{
                     else
                     {
                         x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x_prev(cols_,Eigen::all) - 
-                        x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));
-                
+                        x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));                
                     }
 
-                    if (true)
+                    if (extra_logs)
                     {
                         std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
                             std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
@@ -780,7 +786,7 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches,
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau)
     {
 
         std::vector<std::thread> ths;
@@ -789,7 +795,8 @@ namespace predictc{
         for (int i = 0; i < workers_count; ++i)
         {
             //std::thread(&Bsa::bsa_worker, this, b,x,P,Q,all_batches,rows_id_seq, i).detach();
-            ths.push_back(std::thread(&Bsa::bsa_worker, this, b,x_prev, x,P,Q,std::ref(all_batches),rows_id_seq, i));
+            ths.push_back(std::thread(&Bsa::bsa_worker, this, b,x_prev, x,P,Q,
+            std::ref(all_batches),rows_id_seq, i, extra_logs));
         }
 
         for (int i = 0; i < workers_count; ++i)
@@ -844,7 +851,7 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches,
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index)
+            uint worker_index, uint extra_logs)
     {
         if(false)
         {
@@ -862,8 +869,8 @@ namespace predictc{
         Eigen::MatrixXd b_rows;
 
 
-        Eigen::VectorXi x_cols_all = <Eigen::VectorXi >(x.cols(),0,x.cols()-1);
-        Eigen::VectorXi b_cols_all = <Eigen::VectorXi >(b.cols(),0,b.cols()-1);
+        Eigen::VectorXi x_cols_all = igl::LinSpaced<Eigen::VectorXi >(x.cols(),0,x.cols()-1);
+        Eigen::VectorXi b_cols_all = igl::LinSpaced<Eigen::VectorXi >(b.cols(),0,b.cols()-1);
 
         for(uint iter=0; iter < rows_id_seq.cols()-1; ++iter)
         {
@@ -919,7 +926,7 @@ namespace predictc{
                     Eigen::MatrixXd res = x_rows + q*((1/jump) * A_rows_cols * x_cols - x_rows + b_rows);
                     //auto res = A_rows_cols*x_cols;
                     
-                    if (false)
+                    if (extra_logs)
                     {
                         print(std::string("./logs/loops") + std::string("/rows") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
                         print(std::string("./logs/loops") + std::string("/cols") + std::to_string(iter) + std::string("_mat.cpp.log"), x_rows);
@@ -938,7 +945,7 @@ namespace predictc{
                     double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     x(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x(cols_,Eigen::all) - x(rows_, Eigen::all) + b(rows_,Eigen::all));
 
-                    if (false)
+                    if (extra_logs)
                     {
                         std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
                             std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
@@ -979,17 +986,17 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau)
     {
 
-        for(uint work_index=0; work_index < rows_id_seq.cols()-1; ++work_index)
+        for(uint work_index=0; work_index < tau; ++work_index)
         {
             std::vector<std::thread> ths;
         
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
                 ths.push_back(std::thread(&Bsa::bsa_worker1, this, b,x_prev,x,P,Q,
-                    std::ref(all_batches),rows_id_seq, worker_index, work_index));
+                    std::ref(all_batches),rows_id_seq, worker_index, work_index, extra_logs));
             
             }
 
@@ -1009,7 +1016,7 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches,
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index, uint work_index)
+            uint worker_index, uint work_index, uint extra_logs)
     {
         SpMat A_rows_cols;
         uint rows_id = rows_id_seq(worker_index, work_index);
@@ -1033,10 +1040,10 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> P,
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq)
+            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau)
     {
 
-        for(uint work_index=0; work_index < rows_id_seq.cols(); ++work_index)
+        for(uint work_index=0; work_index < tau; ++work_index)
         {
             std::vector<std::thread> ths;
         
@@ -1044,16 +1051,16 @@ namespace predictc{
             {
                 if(work_index % 2)
                 {
-                    //#std::cout << "x --> x_prev" << std::endl;
+                    std::cout << "x --> x_prev" << std::endl;
                     ths.push_back(std::thread(&Bsa::bsa_worker_all, this, b, x,x_prev,P,Q,
-                        std::ref(all_batches),rows_id_seq, worker_index, work_index));
+                        std::ref(all_batches),rows_id_seq, worker_index, work_index, extra_logs));
                 
                 }
                 else
                 {
-                    //std::cout << "x_prev --> x" << std::endl;
+                    std::cout << "x_prev --> x" << std::endl;
                     ths.push_back(std::thread(&Bsa::bsa_worker_all, this, b, x_prev,x,P,Q,
-                        std::ref(all_batches),rows_id_seq, worker_index, work_index));
+                        std::ref(all_batches),rows_id_seq, worker_index, work_index, extra_logs));
                 }
 
                 //ths[worker_index].join();
@@ -1075,7 +1082,7 @@ namespace predictc{
             Eigen::Ref<Eigen::MatrixXd> Q,
             std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches,
             Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index, uint work_index)
+            uint worker_index, uint work_index, uint extra_logs)
     {
         SpMat A_rows_cols;
         uint rows_id = worker_index;
@@ -1091,7 +1098,7 @@ namespace predictc{
         double q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
         x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x_prev(cols_,Eigen::all) - x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));\
         
-        if (false)
+        if (extra_logs)
         {
             std::string findex = std::to_string(work_index) + std::string("_") + std::to_string(worker_index) +
                 std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
@@ -1113,11 +1120,20 @@ namespace predictc{
 
 }
 #ifndef CYTHON_COMPILE
+
+void accuracy_check()
+{
+    std::string filename = "./run_bsa_appnp.py -e";
+    std::string command = "python3 ";
+    command += filename;
+    system(command.c_str());
+
+}
 int main()
 {
     if (true)
     {
-        std::string filename = "./run_bsa_appnp.py ";
+        std::string filename = "./run_bsa_appnp.py -p";
         std::string command = "python3 ";
         command += filename;
         system(command.c_str());
@@ -1134,6 +1150,7 @@ int main()
     uint niter;
     Eigen::MatrixXd P;
     Eigen::MatrixXd Q;
+    uint tau;
 
     MatrixXiRowMajor all_batches;
 
@@ -1151,7 +1168,7 @@ int main()
     >> n_ >> m_ 
     >> niter 
     >> epsilon >> gamma
-    >> threads_num;
+    >> threads_num >> tau;
     std::string log_dir("");
     bsa_serialized.close();
 
@@ -1160,7 +1177,7 @@ int main()
             << " " << n_ << " " << m_ 
             << " " << niter 
             << " " << epsilon << " " << gamma
-            << " " << threads_num;
+            << " " << threads_num << " " << tau;
 
     read_mat("./logs/b_mat.py.log", b);
     read_mat("./logs/x_mat.py.log", x_prev);
@@ -1181,6 +1198,9 @@ int main()
     auto rows_id_seq_ = Eigen::Map<Eigen::MatrixXi>(rows_id_seq.data(), rows_id_seq.rows(), rows_id_seq.cols());
 
     predictc::Bsa bsa;
+    
+    //tau = rows_id_seq.cols();
+    
     bsa.bsa_operation(dataset_name, size_, n_, m_, 
     b_,
     x_prev_,
@@ -1190,7 +1210,7 @@ int main()
     Q_,
     all_batches_,
     rows_id_seq_,
-    epsilon, gamma, threads_num);
+    epsilon, gamma, threads_num, 0, tau-2);
     
     read_mat("./logs/x_res_mat.py.log", res_py);
     read_mat("./logs/x_res_mat.cpp.log", res_cpp);
@@ -1198,7 +1218,9 @@ int main()
     std::cout << BR50;
     std::cout << "sum cpp : " << res_cpp.sum() << std::endl;
     std::cout << "sum py  : " << res_py.sum() << std::endl;
-    std::cout << "diff sum: " << (res_cpp - res_py).sum() << std::endl;
+    std::cout << "diff sum_: " << (res_cpp - res_py).sum() << std::endl;
+
+    accuracy_check();
 
     return 0;
 }

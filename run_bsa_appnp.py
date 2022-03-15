@@ -1,6 +1,10 @@
 from bsa_appnp.read_utils import utils
 from bsa_appnp.bsa_appnp import bsann
 from bsa_appnp.GraphGenerator import  _precompute_block,  calc_A_hat, load_blocks, save_blocks, convert_sparse_matrix_to_sparse_tensor, calc_A_hatmod
+import os
+import logging
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 import copy
 from timeit import default_timer as timer
@@ -64,7 +68,7 @@ def graphsave(adj, dir, to_sort=False):
 
 #@profile(precision=10)
 def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
-    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False, thread_num=1):
+    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False, thread_num=1, extra_logs=False):
 
     if bsa_type_cpp:
         from predictc import BSAcpp
@@ -128,12 +132,14 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
               batch=batch_size,
               alpha=alpha)
 
+    ed_name = f'./cache/ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
+    all_name =f'./cache/all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
+
     if load_check:
         ED_mat,  all_batches = \
-            load_blocks(f'ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy',
-                        f'all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy')
-        print('ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy')
-        print('all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy')
+            load_blocks(ed_name, all_name)
+        print(ed_name)
+        print(all_name)
     else:
         start = timer()
         ED_mat, all_batches = \
@@ -143,9 +149,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         compute_ED = timer() - start
         ED_mat = np.array(calc_A_hatmod(ED_mat, sigma=0))
 
-        save_blocks(ED_mat, all_batches, 'ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy',
-                    'all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy')
-        print("saved!!!")
+        save_blocks(ED_mat, all_batches, ed_name, all_name)
+        #print("saved!!!")
 
     parameters = dict()
     parameters['Ah'] = Ah
@@ -189,7 +194,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-    if True:
+    if False:
         data_name = "test1"
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
@@ -225,8 +230,6 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         ED_mat = np.random.rand(3,3)
         row_sums = ED_mat.sum(axis=1)
         ED_mat = ED_mat / row_sums[:, np.newaxis]
-
-        tau=1
 
         test_idx = [4,5]
         labels_test = [1,1]
@@ -309,7 +312,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     x_prev = copy.deepcopy(x)
 
     with open("./logs/bsa_serialized.py.log", "w") as f:
-        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {tau} {epsilon} {gamma} {thread_num}")
+        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {niter} {epsilon} {gamma} {thread_num} {tau}")
         #print_matsp_i("./logs", f"A", A)
     utils.print_mat("./logs", "b", b)
     utils.print_mat("./logs", "x", x)
@@ -320,6 +323,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     utils.print_mat("./logs", "rows_id_seq", rows_id_seq)
     utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
 
+    #print(f"python: extra_logs={extra_logs}")
 
     linear_time = 0
     if bsa_type_cpp:
@@ -327,11 +331,13 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,
               b,
               x_prev,
-              x, tau, 
+              x, niter, 
               P, 
               Q, 
-              all_batches_squared, rows_id_seq, epsilon, gamma, thread_num)
+              all_batches_squared, rows_id_seq, epsilon, gamma, thread_num, extra_logs, tau)
         accuracy_ = accuracy_score(labels_test, np.argmax(x[test_idx], axis=1))
+        print(f"sum cpp : ", x.sum())
+
 
         print("="*50)
     else:
@@ -340,16 +346,18 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
                 b=b,
                 x_prev=x_prev,
                 x=x,
-                niter=tau,
+                tau=tau,
+                niter=niter,
                 P=P,
                 Q = Q,
                 all_batches=all_batches,
                 rows_id_seq=rows_id_seq,
                 epsilon=epsilon,
                 gamma=gamma,
-                seed=main_seed)
+                seed=main_seed,
+                extra_logs=extra_logs)
         accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
-                
+        print(f"sum py  : ", x.sum())
 
     print('accuracy', accuracy_)
     
@@ -367,17 +375,38 @@ def check():
 
     res_py = utils.read_mat("./logs/x_res_mat.py.log")
     res_cpp = utils.read_mat("./logs/x_res_mat.cpp.log")
-
+    print("="*50)
     print(f"sum cpp : ", res_py.sum())
     print(f"sum py  : ", res_cpp.sum())
     print(f"diff sum: ", (res_cpp - res_py).sum())
 
 
-import sys, getopt
+def accuracy_check(data_name):
+    
+    file_path = f'{data_name}.npz'
+    A, attr_matrix, labels, train_idx, val_idx, test_idx =\
+        utils.get_data(
+            f"bsa_appnp/data/{file_path}",
+            seed=seed,
+            ntrain_div_classes=20,
+            normalize_attr=None)
+
+    labels_test = labels[test_idx]
+
+    res_py = utils.read_mat("./logs/x_res_mat.py.log")
+    res_cpp = utils.read_mat("./logs/x_res_mat.cpp.log")
+
+    accuracy_py = accuracy_score(labels_test, np.argmax(res_py[test_idx], axis=1))
+    accuracy_cpp = accuracy_score(labels_test, np.argmax(res_cpp[test_idx], axis=1))
+
+    print('accuracy py: ', accuracy_py)
+    print('accuracy cpp: ', accuracy_cpp)
+    
 if __name__ == "__main__":
+    import sys, getopt
     argv = (sys.argv[1:])
     try:
-        opts, args = getopt.getopt(argv,"hpcka",[])
+        opts, args = getopt.getopt(argv,"pckae",[])
     except getopt.GetoptError:
         sys.exit(2)
     
@@ -385,7 +414,7 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 11#100
+    tau = 101 #100
     niter = 1
     dim = 64
     mepoch = 200#  200
@@ -393,11 +422,13 @@ if __name__ == "__main__":
     thread_num = 6
     dataset_name = 'cora_full'#'pubmed'
     load_check = False
-
+    extra_logs = 0
+    
+    if tau > 5: extra_logs = 0
+    
     for opt, arg in opts:
-        if opt == "-h":
-            print('python3 ./run_bsa_appnp.py -c\n\n')
-        elif opt == "-p":
+        
+        if opt == "-p":
             acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
                 run(seed=seed,
                 tau=tau,
@@ -411,7 +442,8 @@ if __name__ == "__main__":
                 alpha=alpha,
                 maxepochs=mepoch,
                 bsa_type_cpp=False,
-                thread_num=thread_num
+                thread_num=thread_num,
+                extra_logs=extra_logs
             )
         elif opt == "-c":
             acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
@@ -427,7 +459,8 @@ if __name__ == "__main__":
                 alpha=alpha,
                 maxepochs=mepoch,
                 bsa_type_cpp=True,
-                thread_num=thread_num
+                thread_num=thread_num,
+                extra_logs=extra_logs
             )
         elif opt == "-k":
             check()
@@ -445,7 +478,8 @@ if __name__ == "__main__":
                 alpha=alpha,
                 maxepochs=mepoch,
                 bsa_type_cpp=True,
-                thread_num=thread_num
+                thread_num=thread_num,
+                extra_logs=extra_logs
             )
             acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
                 run(seed=seed,
@@ -460,10 +494,19 @@ if __name__ == "__main__":
                 alpha=alpha,
                 maxepochs=mepoch,
                 bsa_type_cpp=False,
-                thread_num=thread_num
+                thread_num=thread_num,
+                extra_logs=extra_logs
             )
             check()
 
+        elif opt == "-e":
+            accuracy_check(dataset_name)
+        else:
+            assert(False and "WRONG CMD FLAG")
+
+        
+
+        
         
     
     
