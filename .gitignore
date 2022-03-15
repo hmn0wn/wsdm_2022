@@ -155,7 +155,7 @@ all_batches_pubmed_9858test.npy
 test.bmp
 test.csv
 
-eigen/*
+eigen3/*
 bsa
 gmon.out
 .gitignore

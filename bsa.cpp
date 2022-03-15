@@ -3,11 +3,15 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <iomanip> 
+
 #include <sys/time.h>
 #include <random>
 #include <map>
 #include <igl/cotmatrix.h>
 
+#include <unordered_map>
+std::unordered_map<int64_t, double> A_map;
 
 /*template <typename Derived>
 //inline typename Eigen::DenseBase< Derived >::RandomAccessLinSpacedReturnType 
@@ -333,7 +337,9 @@ const Eigen::SparseMatrix<Derived>& matrix, bool to_print = false)
     {
         for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
         {
+            fcpplog << std::setw(5);
             fcpplog << matrix.coeff(i, j) << " ";
+            std::cout << std::setw(5);
             if (to_print) std::cout << matrix.coeff(i, j) << " ";
         }
         fcpplog << std::endl;
@@ -539,7 +545,10 @@ void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
             int j = el[jptr];
             double d = dl[jptr];
             triplets.push_back(Trip(i, j, d));
-            //std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
+            int64_t index = (int64_t)i << 32 | (int64_t)j;
+            A_map[index] = d;
+            
+            std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
         }
     }
 
@@ -619,12 +628,21 @@ namespace predictc{
             std::cout << "tau" << tau << std::endl;
         }
 
+        assert(dataset_name.size() > 0);
+        //assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
+
+        double prep_t, cclock_t;
+        std::cout << "BSA cpp" << std::endl;
+        A.resize(size_, size_);
+        read_sparse_matrix(n_, m_, dataset_name, A);
+       
         if(extra_logs)
         {
             print("./logs/b_mat.cpp.log", b);
             print("./logs/x_mat.cpp.log", x);
             print("./logs/P_mat.cpp.log", P);
             print("./logs/Q_mat.cpp.log", Q);
+            print("./logs/A_mat.cpp.log", A);
             print("./logs/all_batches_mat.cpp.log", all_batches);
             print("./logs/all_batches_vec.cpp.log", all_batches_);
             print("./logs/rows_id_seq_mat.cpp.log", rows_id_seq);
@@ -639,14 +657,6 @@ namespace predictc{
             bsa_serialized.close();
         }
         
-        assert(dataset_name.size() > 0);
-        //assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
-
-        double prep_t, cclock_t;
-        std::cout << "BSA cpp" << std::endl;
-        A.resize(size_, size_);
-        read_sparse_matrix(n_, m_, dataset_name, A);
-       
         
         struct timeval t_start,t_end;
         clock_t start_t, end_t;
@@ -698,7 +708,7 @@ namespace predictc{
         {
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
-                
+                std::cout << worker_index << " " << iter << std::endl;
                 uint rows_id = worker_index;
                 uint batch_id = rows_id_seq(worker_index, iter);
 
@@ -740,7 +750,8 @@ namespace predictc{
                     
                     slice_into(res, rows_, x_cols_all, x);
                 }
-                else
+                
+                if(false)
                 {
                     slice(A,rows_,cols_,A_rows_cols);
                     double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
@@ -754,29 +765,60 @@ namespace predictc{
                         x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x_prev(cols_,Eigen::all) - 
                         x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));                
                     }
-
-                    if (extra_logs)
+                }
+                
+                if(true)
+                {
+                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    
+                    for (int ir = 0; ir < rows_.size(); ++ir)
                     {
-                        std::cout << worker_index << " " << iter << std::endl;
-
-                        std::cout << "jump: " << jump << std::endl;
-                        std::cout << "qjump: " << qjump << std::endl;
-
-                        std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
-                            std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
-                            
-                        print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols);
-                                    
-                        print(std::string("./logs/loops/") +findex + std::string("_rows")   + std::string("_mat.cpp.log"), rows_);
-                        print(std::string("./logs/loops/") +findex + std::string("_cols")   + std::string("_mat.cpp.log"), cols_);
-
-                        print(std::string("./logs/loops/") +findex + std::string("_x_rows") + std::string("_mat.cpp.log"), x(rows_, Eigen::all));
-                        print(std::string("./logs/loops/") +findex + std::string("_x_cols") + std::string("_mat.cpp.log"), x(cols_, Eigen::all));
-                        print(std::string("./logs/loops/") +findex + std::string("_b_rows") + std::string("_mat.cpp.log"), b(rows_,Eigen::all));
-                        
-                        print(std::string("./logs/loops/") +findex + std::string("_x")      + std::string("_mat.cpp.log"), x, false);
-                        print(std::string("./logs/loops/") +findex + std::string("_x_prev") + std::string("_mat.cpp.log"), x_prev, false);
+                        auto row_index = rows_[ir];
+                        auto x_row = iter%2 ? x_prev.row(row_index) : x.row(row_index);
+                        auto x_prev_row = x_prev.row(row_index);
+                        auto b_row = b.row(row_index);
+                        for(int jr = 0; jr < x_row.size(); ++jr)
+                        {
+                            double A_xcol = 0;
+                            for(int ic = 0; ic < cols_.size(); ++ic)
+                            {
+                                auto col_index =cols_[ic];
+                                auto x_prev_col = iter%2 ? x.row(col_index) : x_prev.row(col_index);
+                                int64_t A_index = (int64_t)row_index << 32 | (int64_t)col_index;
+                                auto A_ir_ic = A_map[A_index];
+                                //std::cout << "A_" << row_index << "_" << col_index << " :" << A_ir_ic << std::endl;
+                                auto x_prev_col_jr = x_prev_col[jr];
+                                A_xcol += A_ir_ic * x_prev_col_jr;
+                            }
+                            auto x_ir_jr = x_prev_row[jr] + q*((1/jump) * A_xcol - x_prev_row[jr] + b_row[jr]);
+                            //std::cout << "bsa: " << x_row[jr] << " vs " << x_ir_jr << std::endl;
+                            x_row[jr] = x_ir_jr;
+                        }
                     }
+                }
+
+                if (extra_logs)
+                {
+                    std::cout << worker_index << " " << iter << std::endl;
+
+                    std::cout << "jump: " << jump << std::endl;
+                    std::cout << "qjump: " << qjump << std::endl;
+
+                    std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
+                        std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
+                        
+                    print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols, true);
+                                
+                    print(std::string("./logs/loops/") +findex + std::string("_rows")   + std::string("_mat.cpp.log"), rows_);
+                    print(std::string("./logs/loops/") +findex + std::string("_cols")   + std::string("_mat.cpp.log"), cols_);
+
+                    print(std::string("./logs/loops/") +findex + std::string("_x_rows") + std::string("_mat.cpp.log"), x(rows_, Eigen::all));
+                    print(std::string("./logs/loops/") +findex + std::string("_x_cols") + std::string("_mat.cpp.log"), x(cols_, Eigen::all));
+                    print(std::string("./logs/loops/") +findex + std::string("_b_rows") + std::string("_mat.cpp.log"), b(rows_,Eigen::all));
+                    
+                    print(std::string("./logs/loops/") +findex + std::string("_x")      + std::string("_mat.cpp.log"), x, false);
+                    print(std::string("./logs/loops/") +findex + std::string("_x_prev") + std::string("_mat.cpp.log"), x_prev, false);
+                    std::cout << BR50;
                 }
             }
         }
@@ -1225,7 +1267,7 @@ int main()
     std::cout << "sum py  : " << res_py.sum() << std::endl;
     std::cout << "diff sum_: " << (res_cpp - res_py).sum() << std::endl;
 
-    accuracy_check();
+    //accuracy_check();
 
     return 0;
 }

@@ -222,9 +222,9 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         # np.array([3,4,5], dtype=np.int32)]
         
         all_batches = [\
-            np.array([0], dtype=np.int32), \
-            np.array([1], dtype=np.int32), \
-            np.array([2], dtype=np.int32)]
+            np.array([0, 1], dtype=np.int32), \
+            np.array([2, 3], dtype=np.int32), \
+            np.array([4, 5], dtype=np.int32)]
         
         np.random.seed(main_seed)
         ED_mat = np.random.rand(3,3)
@@ -428,7 +428,7 @@ if __name__ == "__main__":
     mepoch = 200#  200
     bsa_type_cpp = False
     thread_num = 6
-    dataset_name = 'test1'#'pubmed'
+    dataset_name = 'pubmed'#'pubmed'
     load_check = False
     extra_logs = 0
     
@@ -486,7 +486,7 @@ if __name__ == "__main__":
                 thread_num=thread_num,
                 extra_logs=extra_logs
             )
-            arun(seed=seed,
+            run(seed=seed,
                 tau=tau,
                 btl_=bs,
                 batch_size=bs,
