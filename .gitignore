@@ -155,15 +155,11 @@ all_batches_pubmed_9858test.npy
 test.bmp
 test.csv
 
-eigen3_old/*
+eigen/*
 bsa
 gmon.out
 .gitignore
 profile.svg
 profile
-
-all_batches_cora_full_4700test.npy
-all_batches_pubmed_9858test.npy
-all_batches_reddit_1012test.npy
-ED_cora_full_4700test.npy
-ED_pubmed_9858test.npy
+packages
+typescript
