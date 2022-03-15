@@ -604,7 +604,7 @@ namespace predictc{
         threads_num = threads_num_;
         auto all_batches_ = remove_negative(all_batches);
 
-        if(false)
+        if(extra_logs)
         {
             std::cout << "dataset name: " << dataset_name << std::endl;
             std::cout << "size_: " << size_ << "n: " << n_ << std::endl << "m: " << m_ << std::endl;
@@ -698,19 +698,18 @@ namespace predictc{
         {
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
-                //std::cout << worker_index << " " << iter << std::endl;
-                //std::cout << "extra_logs: " << extra_logs << std::endl;
+                
                 uint rows_id = worker_index;
                 uint batch_id = rows_id_seq(worker_index, iter);
 
-                //std::cout << BR50;
+                //std::cout << "_1" << std::endl;
                 auto rows_ = all_batches[rows_id];
                 auto cols_ = all_batches[batch_id];
                 auto jump = P(rows_id, batch_id);
                 auto qjump = Q(rows_id, batch_id);
                 jump *= 1; qjump*= 1;
 
-                
+                //std::cout << "_2" << std::endl;
                 if(false)
                 {
                     slice(x,rows_, x_cols_all, x_rows);
@@ -758,6 +757,11 @@ namespace predictc{
 
                     if (extra_logs)
                     {
+                        std::cout << worker_index << " " << iter << std::endl;
+
+                        std::cout << "jump: " << jump << std::endl;
+                        std::cout << "qjump: " << qjump << std::endl;
+
                         std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
                             std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
                             
@@ -1051,14 +1055,14 @@ namespace predictc{
             {
                 if(work_index % 2)
                 {
-                    std::cout << "x --> x_prev" << std::endl;
+                    //std::cout << "x --> x_prev" << std::endl;
                     ths.push_back(std::thread(&Bsa::bsa_worker_all, this, b, x,x_prev,P,Q,
                         std::ref(all_batches),rows_id_seq, worker_index, work_index, extra_logs));
                 
                 }
                 else
                 {
-                    std::cout << "x_prev --> x" << std::endl;
+                    //std::cout << "x_prev --> x" << std::endl;
                     ths.push_back(std::thread(&Bsa::bsa_worker_all, this, b, x_prev,x,P,Q,
                         std::ref(all_batches),rows_id_seq, worker_index, work_index, extra_logs));
                 }
@@ -1131,7 +1135,7 @@ void accuracy_check()
 }
 int main()
 {
-    if (true)
+    if (false)
     {
         std::string filename = "./run_bsa_appnp.py -p";
         std::string command = "python3 ";
@@ -1200,6 +1204,7 @@ int main()
     predictc::Bsa bsa;
     
     //tau = rows_id_seq.cols();
+    uint extra_logs = 0;
     
     bsa.bsa_operation(dataset_name, size_, n_, m_, 
     b_,
@@ -1210,7 +1215,7 @@ int main()
     Q_,
     all_batches_,
     rows_id_seq_,
-    epsilon, gamma, threads_num, 0, tau-2);
+    epsilon, gamma, threads_num, extra_logs, tau);
     
     read_mat("./logs/x_res_mat.py.log", res_py);
     read_mat("./logs/x_res_mat.cpp.log", res_cpp);

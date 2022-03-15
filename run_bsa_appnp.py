@@ -76,126 +76,126 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     #vscode cant import cython modules in debug mode
         class BSAcpp:
             pass
+    
+    if "test" not in data_name:
+        rs = np.random.RandomState(seed=main_seed)
+        batch_size_logits = 10000
+        compute_ED = 0
+        num_edges = []
+        indexes_dict = {}
+        if data_name == 'reddit':
+            sparse = False
 
-    rs = np.random.RandomState(seed=main_seed)
-    batch_size_logits = 10000
-    compute_ED = 0
-    num_edges = []
-    indexes_dict = {}
-    if data_name == 'reddit':
-        sparse = False
+        file_path = f'{data_name}.npz'
+        A, attr_matrix, labels, train_idx, val_idx, test_idx =\
+            utils.get_data(
+                f"bsa_appnp/data/{file_path}",
+                seed=seed,
+                ntrain_div_classes=20,
+                normalize_attr=None)
 
-    file_path = f'{data_name}.npz'
-    A, attr_matrix, labels, train_idx, val_idx, test_idx =\
-        utils.get_data(
-            f"bsa_appnp/data/{file_path}",
-            seed=seed,
-            ntrain_div_classes=20,
-            normalize_attr=None)
+        nnodes = A.shape[0]
+        all_n = np.arange(nnodes)
+        D_vec = np.sum(A, axis=1).A1
+        Ah = calc_A_hat(A)
+        nclasses = len(np.unique(labels))
+        optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
+        #optimal_batch_size = batch_size
+        batch_all = np.array(list(set(all_n) - set(train_idx)))
+        labels_test = labels[test_idx]
+        labels = np.array(labels)
 
-    nnodes = A.shape[0]
-    all_n = np.arange(nnodes)
-    D_vec = np.sum(A, axis=1).A1
-    Ah = calc_A_hat(A)
-    nclasses = len(np.unique(labels))
-    optimal_batch_size = int(nnodes / np.median(D_vec)) #средняя степень вершин
-    #optimal_batch_size = batch_size
-    batch_all = np.array(list(set(all_n) - set(train_idx)))
-    labels_test = labels[test_idx]
-    labels = np.array(labels)
+        if btl_ > len(train_idx):
+            btl = len(train_idx) - 1
+        else:
+            btl = copy.copy(btl_)
 
-    if btl_ > len(train_idx):
-        btl = len(train_idx) - 1
-    else:
-        btl = copy.copy(btl_)
-
-    rs.shuffle(batch_all)
-    start = timer()
-    print('bs', batch_size)
-    partitions = np.array_split(batch_all, batch_size)
-
-    tr_id_temp = rs.choice(train_idx, btl, False)
-    for ii, val in enumerate(partitions):
-        indexes_dict[ii] = val
-        #temp_ = np.concatenate([tr_id_temp, val ])
-        #print(A[tr_id_temp,:][:, val].count_nonzero())
-        #num_edges.append(A[tr_id_temp,:][:, val].count_nonzero())
-    #print('edges in batch', num_edges)
-
-    time_batch_generation = timer() - start
-    model = \
-        bsann(nnodes=nnodes,
-              nclasses=nclasses,
-              ndim=dim,
-              niterations=niter,
-              gamma=gamma,
-              batch=batch_size,
-              alpha=alpha)
-
-    ed_name = f'./cache/ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
-    all_name =f'./cache/all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
-
-    if load_check:
-        ED_mat,  all_batches = \
-            load_blocks(ed_name, all_name)
-        print(ed_name)
-        print(all_name)
-    else:
+        rs.shuffle(batch_all)
         start = timer()
-        ED_mat, all_batches = \
-            _precompute_block(batch_size=optimal_batch_size,
-                              adj_matrix=A,
-                              seed=main_seed)
-        compute_ED = timer() - start
-        ED_mat = np.array(calc_A_hatmod(ED_mat, sigma=0))
+        print('bs', batch_size)
+        partitions = np.array_split(batch_all, batch_size)
 
-        save_blocks(ED_mat, all_batches, ed_name, all_name)
-        #print("saved!!!")
+        tr_id_temp = rs.choice(train_idx, btl, False)
+        for ii, val in enumerate(partitions):
+            indexes_dict[ii] = val
+            #temp_ = np.concatenate([tr_id_temp, val ])
+            #print(A[tr_id_temp,:][:, val].count_nonzero())
+            #num_edges.append(A[tr_id_temp,:][:, val].count_nonzero())
+        #print('edges in batch', num_edges)
 
-    parameters = dict()
-    parameters['Ah'] = Ah
-    parameters['device'] = '/GPU:0'
-    parameters['model'] = model
-    parameters['train_idx'] = train_idx
-    parameters['maxepochs'] = maxepochs
-    parameters['dataset'] = indexes_dict
-    parameters['attr_matrix'] = attr_matrix# utils.normalize_attributes()
-    parameters['btl'] = btl
-    parameters['val_idx'] = val_idx
-    parameters['Y'] = labels
-    parameters['sparse'] = sparse
-    parameters['data_name'] = data_name
-    vars_, training_time = traininng(parameters=parameters)
-    model.trainable_variables[0].assign(vars_[0])
-    model.trainable_variables[1].assign(vars_[1])
-    model.save_weights(f'./weights/my_model_{data_name}')
-    del vars_
-    gc.collect()
+        time_batch_generation = timer() - start
+        model = \
+            bsann(nnodes=nnodes,
+                nclasses=nclasses,
+                ndim=dim,
+                niterations=niter,
+                gamma=gamma,
+                batch=batch_size,
+                alpha=alpha)
 
-    Z = []
-    start = timer()
+        ed_name = f'./cache/ED_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
+        all_name =f'./cache/all_batches_'+data_name+"_"+str(optimal_batch_size)+'test.npy'
 
-    for i in range(0, nnodes, batch_size_logits):
-        attr_rows = convert_sparse_matrix_to_sparse_tensor(parameters['attr_matrix'][i:i+batch_size_logits]) if \
-            sparse else\
-            parameters['attr_matrix'][i:i+batch_size_logits]
-        zt = tf.nn.softmax(model.predict(attr_rows)).numpy()
-        Z.append(zt)
-    end = timer()
-    Z = np.row_stack(Z)
+        if load_check:
+            ED_mat,  all_batches = \
+                load_blocks(ed_name, all_name)
+            print(ed_name)
+            print(all_name)
+        else:
+            start = timer()
+            ED_mat, all_batches = \
+                _precompute_block(batch_size=optimal_batch_size,
+                                adj_matrix=A,
+                                seed=main_seed)
+            compute_ED = timer() - start
+            ED_mat = np.array(calc_A_hatmod(ED_mat, sigma=0))
 
-    inference_time_batch = end - start
-    Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
+            save_blocks(ED_mat, all_batches, ed_name, all_name)
+            #print("saved!!!")
+
+        parameters = dict()
+        parameters['Ah'] = Ah
+        parameters['device'] = '/GPU:0'
+        parameters['model'] = model
+        parameters['train_idx'] = train_idx
+        parameters['maxepochs'] = maxepochs
+        parameters['dataset'] = indexes_dict
+        parameters['attr_matrix'] = attr_matrix# utils.normalize_attributes()
+        parameters['btl'] = btl
+        parameters['val_idx'] = val_idx
+        parameters['Y'] = labels
+        parameters['sparse'] = sparse
+        parameters['data_name'] = data_name
+        vars_, training_time = traininng(parameters=parameters)
+        model.trainable_variables[0].assign(vars_[0])
+        model.trainable_variables[1].assign(vars_[1])
+        model.save_weights(f'./weights/my_model_{data_name}')
+        del vars_
+        gc.collect()
+
+        Z = []
+        start = timer()
+
+        for i in range(0, nnodes, batch_size_logits):
+            attr_rows = convert_sparse_matrix_to_sparse_tensor(parameters['attr_matrix'][i:i+batch_size_logits]) if \
+                sparse else\
+                parameters['attr_matrix'][i:i+batch_size_logits]
+            zt = tf.nn.softmax(model.predict(attr_rows)).numpy()
+            Z.append(zt)
+        end = timer()
+        Z = np.row_stack(Z)
+
+        inference_time_batch = end - start
+        Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
 
     print("="*100)
-    if False:
-        data_name = "test"
+    if data_name == "test":
         indptr = np.array([0, 2, 3, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         data = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
         Ah = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
-    if False:
-        data_name = "test1"
+    
+    if data_name == "test1":
         row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])
         col = np.array([0,2,4,2,0,1,2,4,2,1,3,5,0,2,5])
         data = np.array([0.01, 0.02, 0.01, 0.03, 0.04, 0.05, 0.06, 0.02, 0.05, 0.04, 0.03, 0.01, 0.02, 0.01, 0.01])
@@ -269,61 +269,69 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     epsilon=0.1 
     gamma=0.3
+    ED_mat = ED_mat.ravel(order='F').reshape(ED_mat.shape[0], ED_mat.shape[1], order='F').astype('float64')
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
     
     Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
     
-    list_batches = np.arange(n_butches)
-    rs = np.random.RandomState(seed=seed)
-    if False:
-        rows_id_seq = [list(range(thread_num)),]
-        
-        assert(thread_num < n_butches * 2)
-        for i in range(tau//thread_num):
-            cur_bathces = []
-            for j in range(thread_num):
-                b = rows_id_seq[i][0]
-                while b in cur_bathces: # or b in rows_id_seq[i]:
-                    b = rs.choice(list_batches, 1, p=Q[rows_id_seq[i][j]])[0]
-                    
-                cur_bathces.append(b)
-            rows_id_seq.append(cur_bathces)
-            print(f"{i}: {rows_id_seq[i+1]} --> {rows_id_seq[i]}")
-    
-        rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
-        rows_id_seq = rows_id_seq.transpose()
-    else:
-        assert(tau % 2)
-        rows_id_seq = []
-        for i in range(tau):
-            cur_bathces = []
-            for j in range(n_butches):
-                b = rs.choice(list_batches, 1, p=Q[j])[0]
-                cur_bathces.append(b)
-            rows_id_seq.append(cur_bathces)
-
-        rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
-        rows_id_seq = rows_id_seq.transpose()
-
     b = (1 - alpha) * Z
     A = Ah
     x = Z
     P = ED_mat
     x_prev = copy.deepcopy(x)
 
-    with open("./logs/bsa_serialized.py.log", "w") as f:
-        f.write(f"{data_name} {Ah.shape[0]} {n} {m} {niter} {epsilon} {gamma} {thread_num} {tau}")
-        #print_matsp_i("./logs", f"A", A)
-    utils.print_mat("./logs", "b", b)
-    utils.print_mat("./logs", "x", x)
-    utils.print_mat("./logs", "x_prev", x_prev)
-    utils.print_mat("./logs", "P", P)
-    utils.print_mat("./logs", "Q", Q)
-    #utils.print_mat("./logs", "all_batches", all_batches)
-    utils.print_mat("./logs", "rows_id_seq", rows_id_seq)
-    utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
+    list_batches = np.arange(n_butches)
+    rs = np.random.RandomState(seed=seed)
+    if not bsa_type_cpp:
+        if False:
+            rows_id_seq = [list(range(thread_num)),]
+            
+            assert(thread_num < n_butches * 2)
+            for i in range(tau//thread_num):
+                cur_bathces = []
+                for j in range(thread_num):
+                    b = rows_id_seq[i][0]
+                    while b in cur_bathces: # or b in rows_id_seq[i]:
+                        b = rs.choice(list_batches, 1, p=Q[rows_id_seq[i][j]])[0]
+                        
+                    cur_bathces.append(b)
+                rows_id_seq.append(cur_bathces)
+                print(f"{i}: {rows_id_seq[i+1]} --> {rows_id_seq[i]}")
+        
+            rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
+            rows_id_seq = rows_id_seq.transpose()
+        else:
+            assert(tau % 2)
+            rows_id_seq = []
+            for i in range(tau):
+                cur_bathces = []
+                for j in range(n_butches):
+                    b_ = rs.choice(list_batches, 1, p=Q[j])[0]
+                    cur_bathces.append(b_)
+                rows_id_seq.append(cur_bathces)
 
-    #print(f"python: extra_logs={extra_logs}")
+            rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
+            rows_id_seq = rows_id_seq.transpose()
+        with open("./logs/bsa_serialized.py.log", "w") as f:
+            f.write(f"{data_name} {Ah.shape[0]} {n} {m} {niter} {epsilon} {gamma} {thread_num} {tau}")
+
+        #print_matsp_i("./logs", f"A", A)
+        utils.print_mat("./logs", "b", b)
+        utils.print_mat("./logs", "x", x)
+        utils.print_mat("./logs", "x_prev", x_prev)
+        utils.print_mat("./logs", "P", P)
+        utils.print_mat("./logs", "Q", Q)
+        #utils.print_mat("./logs", "all_batches", all_batches)
+        utils.print_mat("./logs", "rows_id_seq", rows_id_seq)
+        utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
+
+        #print(f"python: extra_logs={extra_logs}")
+    else:
+        rows_id_seq=utils.read_mat("./logs/rows_id_seq_mat.py.log")
+        rows_id_seq = rows_id_seq.ravel(order='F').reshape(rows_id_seq.shape[0], rows_id_seq.shape[1], order='F').astype('int32')
+        #rows_id_seq = rows_id_seq.astype('int32')
+
+
 
     linear_time = 0
     if bsa_type_cpp:
@@ -361,15 +369,15 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
     print('accuracy', accuracy_)
     
-    return accuracy_, \
-           training_time, \
-           inference_time_batch, \
-           linear_time, training_time + \
-           inference_time_batch + \
-           linear_time + \
-           time_batch_generation + \
-           compute_ED, \
-           num_edges
+    #return accuracy_, \
+    #       training_time, \
+    #       inference_time_batch, \
+    #       linear_time, training_time + \
+    #       inference_time_batch + \
+    #       linear_time + \
+    #       time_batch_generation + \
+    #       compute_ED, \
+    #      num_edges
 
 def check():
 
@@ -414,13 +422,13 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 101 #100
+    tau = 1 #100
     niter = 1
     dim = 64
     mepoch = 200#  200
     bsa_type_cpp = False
     thread_num = 6
-    dataset_name = 'cora_full'#'pubmed'
+    dataset_name = 'test1'#'pubmed'
     load_check = False
     extra_logs = 0
     
@@ -429,8 +437,7 @@ if __name__ == "__main__":
     for opt, arg in opts:
         
         if opt == "-p":
-            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-                run(seed=seed,
+            run(seed=seed,
                 tau=tau,
                 btl_=bs,
                 batch_size=bs,
@@ -446,8 +453,7 @@ if __name__ == "__main__":
                 extra_logs=extra_logs
             )
         elif opt == "-c":
-            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-                run(seed=seed,
+            run(seed=seed,
                 tau=tau,
                 btl_=bs,
                 batch_size=bs,
@@ -465,24 +471,7 @@ if __name__ == "__main__":
         elif opt == "-k":
             check()
         elif opt == "-a":
-            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-                run(seed=seed,
-                tau=tau,
-                btl_=bs,
-                batch_size=bs,
-                niter=niter,
-                gamma=gamma,
-                data_name=dataset_name,
-                load_check=load_check,
-                dim=dim,
-                alpha=alpha,
-                maxepochs=mepoch,
-                bsa_type_cpp=True,
-                thread_num=thread_num,
-                extra_logs=extra_logs
-            )
-            acc_test, time_training, time_inference, time_inference_linear, time_total, num_edges = \
-                run(seed=seed,
+            run(seed=seed,
                 tau=tau,
                 btl_=bs,
                 batch_size=bs,
@@ -497,16 +486,24 @@ if __name__ == "__main__":
                 thread_num=thread_num,
                 extra_logs=extra_logs
             )
+            arun(seed=seed,
+                tau=tau,
+                btl_=bs,
+                batch_size=bs,
+                niter=niter,
+                gamma=gamma,
+                data_name=dataset_name,
+                load_check=load_check,
+                dim=dim,
+                alpha=alpha,
+                maxepochs=mepoch,
+                bsa_type_cpp=True,
+                thread_num=thread_num,
+                extra_logs=extra_logs
+            )
             check()
-
         elif opt == "-e":
             accuracy_check(dataset_name)
         else:
             assert(False and "WRONG CMD FLAG")
 
-        
-
-        
-        
-    
-    

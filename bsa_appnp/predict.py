@@ -62,8 +62,9 @@ def BSA(A, b, x_prev,x, all_batches, rows_id_seq, P, Q, tau, niter=3, seed=0, ep
                         (1 / jump * A[rows_, :][:, cols_] @ x_prev[cols_] -
                         x_prev[rows_] + b[rows_])
                 if extra_logs > 0:
-                    #print(f"jump: {jump}")
-                    #print(f"qjump: {qjump}")
+                    print(f"id: {batch_id} --> {rows_id}")
+                    print(f"jump: {jump}")
+                    print(f"qjump: {qjump}")
                     findex = f"{work_index}_{worker_index}_{batch_id}->{rows_id}"
 
                     utils.print_matsp("./logs/loops/",  findex + f"_A"    , A[rows_, :][:, cols_])
