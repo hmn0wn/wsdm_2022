@@ -40,15 +40,11 @@ namespace predictc{
 
         double bsa_operation();
         
-        void construct_sparse_blocks_vec(std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches);
+        void construct_sparse_blocks_vec();
         
-        void construct_sparse_blocks_mat(std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches);
+        void construct_sparse_blocks_mat();
 
         void bsa();
-
-        void bsa_multithread();
-
-        void bsa_worker(uint worker_index);
 
         void bsa_multithread1();
 
