@@ -74,6 +74,16 @@
         "core": "cpp",
         "*.evaluator": "cpp",
         "*.traits": "cpp",
-        "specialfunctions": "cpp"
+        "specialfunctions": "cpp",
+        "superlusupport": "cpp",
+        "adolcforward": "cpp",
+        "autodiff": "cpp",
+        "bvh": "cpp",
+        "eulerangles": "cpp",
+        "kroneckerproduct": "cpp",
+        "mprealsupport": "cpp",
+        "numericaldiff": "cpp",
+        "openglsupport": "cpp",
+        "splines": "cpp"
     }
 }

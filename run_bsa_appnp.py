@@ -68,7 +68,8 @@ def graphsave(adj, dir, to_sort=False):
 
 #@profile(precision=10)
 def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
-    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False, thread_num=1, extra_logs=False):
+    alpha, maxepochs, sparse=True, tau=100, bsa_type_cpp=False, thread_num=1,\
+         extra_logs=False, persent=100):
 
     if bsa_type_cpp:
         from predictc import BSAcpp
@@ -258,7 +259,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     n_butches = len(all_batches)
     max_len = len(max(all_batches, key=len))
     all_batches_squared = []
-    for b in all_batches:
+    all_batches_persent = all_batches[ : int(len(all_batches) * persent/100)]
+    for b in all_batches_persent:
         diff = np.empty(max_len - len(b), dtype=np.int32)
         diff.fill(-1)
         all_batches_squared.append(np.concatenate((b, diff), axis=0))
@@ -335,14 +337,25 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
     linear_time = 0
     if bsa_type_cpp:
-        py_bsa = BSAcpp()
-        py_bsa.bsa_operation(data_name, Ah.shape[0], n, m,
-              b,
-              x_prev,
-              x, niter, 
-              P, 
-              Q, 
-              all_batches_squared, rows_id_seq, epsilon, gamma, thread_num, extra_logs, tau)
+        py_bsa = BSAcpp(\
+            b,\
+            x_prev,
+            x,
+            P,
+            Q,
+            rows_id_seq,
+            all_batches_squared,
+            data_name,
+            epsilon,
+            gamma,
+            Ah.shape[0],
+            n,
+            m,
+            niter, 
+            thread_num,
+            extra_logs,
+            tau)
+        py_bsa.bsa_operation()
         accuracy_ = accuracy_score(labels_test, np.argmax(x[test_idx], axis=1))
         print(f"sum cpp : ", x.sum())
 
@@ -431,6 +444,7 @@ if __name__ == "__main__":
     dataset_name = 'pubmed'#'pubmed'
     load_check = False
     extra_logs = 0
+    persent = 100
     
     if tau > 5: extra_logs = 0
     
@@ -450,7 +464,8 @@ if __name__ == "__main__":
                 maxepochs=mepoch,
                 bsa_type_cpp=False,
                 thread_num=thread_num,
-                extra_logs=extra_logs
+                extra_logs=extra_logs,
+                persent=persent
             )
         elif opt == "-c":
             run(seed=seed,
@@ -466,7 +481,8 @@ if __name__ == "__main__":
                 maxepochs=mepoch,
                 bsa_type_cpp=True,
                 thread_num=thread_num,
-                extra_logs=extra_logs
+                extra_logs=extra_logs,
+                persent=persent
             )
         elif opt == "-k":
             check()
@@ -484,7 +500,8 @@ if __name__ == "__main__":
                 maxepochs=mepoch,
                 bsa_type_cpp=False,
                 thread_num=thread_num,
-                extra_logs=extra_logs
+                extra_logs=extra_logs,
+                persent=persent
             )
             run(seed=seed,
                 tau=tau,
@@ -499,7 +516,8 @@ if __name__ == "__main__":
                 maxepochs=mepoch,
                 bsa_type_cpp=True,
                 thread_num=thread_num,
-                extra_logs=extra_logs
+                extra_logs=extra_logs,
+                persent=persent
             )
             check()
         elif opt == "-e":

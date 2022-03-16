@@ -3,6 +3,7 @@
 
 #include "string.h"
 #include <atomic>
+#include <unordered_map>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -17,89 +18,45 @@ using RowMajorArray = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::R
 namespace predictc{
     class Bsa{
         public:
-        Bsa();
-        double bsa_operation(std::string dataset_name,uint size_, uint n_, uint m_, 
-        Eigen::Map<Eigen::MatrixXd> &b,
-        Eigen::Map<Eigen::MatrixXd> &x_prev,
-        Eigen::Map<Eigen::MatrixXd> &x, uint niter_,
-        Eigen::Map<Eigen::MatrixXd> &P,
-        Eigen::Map<Eigen::MatrixXd> &Q,
-        Eigen::Map<RowMajorArray> &all_batches,
-        Eigen::Map<Eigen::MatrixXi> &rows_id_seq,
-        float epsilon, float gamma_, uint threads_num_, uint extra_logs, uint tau);
+        Bsa(
+            Eigen::Map<Eigen::MatrixXd> &b_,
+            Eigen::Map<Eigen::MatrixXd> &x_prev_,
+            Eigen::Map<Eigen::MatrixXd> &x_,
+            Eigen::Map<Eigen::MatrixXd> &P_,
+            Eigen::Map<Eigen::MatrixXd> &Q,
+            Eigen::Map<Eigen::MatrixXi> &rows_id_seq_,
+            Eigen::Map<RowMajorArray> &all_batches_,
+            std::string dataset_name_,
+            float epsilon_,
+            float gamma_, 
+            uint size_,
+            uint n_,
+            uint m_, 
+            uint niter_,
+            uint threads_num_,
+            uint extra_logs_,
+            uint tau_
+            );
+
+        double bsa_operation();
         
-        void bsa(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q,
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau
-        );
+        void construct_sparse_blocks_vec(std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches);
+        
+        void construct_sparse_blocks_mat(std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches);
 
-        void bsa_multithread(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q, 
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau
-        );
+        void bsa();
 
-        void bsa_worker(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q, 
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index, uint extra_logs
-        );
+        void bsa_multithread();
 
-        void bsa_multithread1(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q,
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau
-        );
+        void bsa_worker(uint worker_index);
 
-        void bsa_worker1(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q,
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index, uint work_index, uint extra_logs
-        );
+        void bsa_multithread1();
 
-        void bsa_multithread_all(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q,
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq, uint extra_logs, uint tau
-        );
+        void bsa_worker1(uint worker_index, uint work_index);
 
-         void bsa_worker_all(
-            Eigen::Ref<Eigen::MatrixXd> b,
-            Eigen::Ref<Eigen::MatrixXd> x_prev,
-            Eigen::Ref<Eigen::MatrixXd> x,
-            Eigen::Ref<Eigen::MatrixXd> P,
-            Eigen::Ref<Eigen::MatrixXd> Q,
-            std::vector<Eigen::Map<Eigen::VectorXi>> &all_batches, 
-            Eigen::Ref<Eigen::MatrixXi> rows_id_seq,
-            uint worker_index, uint work_index, uint extra_logs
-        );
+        void bsa_multithread_all();
+
+        void bsa_worker_all(uint worker_index, uint work_index);
 
         static std::atomic<bool> worker_func_end_wall;
         static std::atomic<bool> worker_func_begin_wall;
@@ -108,11 +65,32 @@ namespace predictc{
         static std::atomic<int> done_workers;
         static std::atomic<int> global_time;
 
-        float gamma;
-        uint niter;
         SpMat A;
 
-        int threads_num;
+        Eigen::Ref<Eigen::MatrixXd> b;
+        Eigen::Ref<Eigen::MatrixXd> x_prev;
+        Eigen::Ref<Eigen::MatrixXd> x;
+        Eigen::Ref<Eigen::MatrixXd> P;
+        Eigen::Ref<Eigen::MatrixXd> Q;
+        Eigen::Ref<Eigen::MatrixXi> rows_id_seq;
+        std::vector<Eigen::Map<Eigen::VectorXi>> all_batches;
+        
+        std::string dataset_name;
+        float epsilon;
+        float gamma; 
+        uint size;
+        uint n;
+        uint m; 
+        uint niter;
+        uint threads_num;
+        uint extra_logs;
+        uint tau;
+
+        std::unordered_map<int64_t, double> A_map;
+        std::unordered_map<int32_t, std::unordered_map<int32_t, double>> Af_map;
+
+        std::vector<std::vector<SpMat>> A_blocks_vec;
+        std::unordered_map<int32_t, std::unordered_map<int32_t, SpMat>> A_blocksf_map;
     };
 }
 #endif // BSA_H
