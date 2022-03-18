@@ -171,3 +171,6 @@ profile_brutef.svg
 profile_bruteopt
 profile_bruteopt.svg
 bit_math.cpp
+
+*.pack
+predictc.cpp

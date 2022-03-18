@@ -4,41 +4,43 @@
 #include "string.h"
 #include <atomic>
 #include <unordered_map>
+#include <memory>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/Core>
 
 typedef unsigned int uint;
-using SpMat = Eigen::SparseMatrix<double>;
-using Trip = Eigen::Triplet<double>;
+using fSpMat = Eigen::SparseMatrix<float>;
+using fMMat = Eigen::Map<Eigen::MatrixXf>;
+using fRMat = Eigen::Ref<Eigen::MatrixXf>;
+using fTrip = Eigen::Triplet<float>;
 using MatrixXiRowMajor = Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using RowMajorArray = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using fSpMatMap = std::unordered_map<int32_t, std::unordered_map<int32_t, fSpMat>>;
+
 
 namespace predictc{
     class Bsa{
         public:
         Bsa(
-            Eigen::Map<Eigen::MatrixXd> &b_,
-            Eigen::Map<Eigen::MatrixXd> &x_prev_,
-            Eigen::Map<Eigen::MatrixXd> &x_,
-            Eigen::Map<Eigen::MatrixXd> &P_,
-            Eigen::Map<Eigen::MatrixXd> &Q,
+            fMMat &b_,
+            fMMat &x_prev_,
+            fMMat &x_,
+            fMMat &P_,
+            fMMat &Q,
             Eigen::Map<Eigen::MatrixXi> &rows_id_seq_,
             Eigen::Map<RowMajorArray> &all_batches_,
             std::string dataset_name_,
             float epsilon_,
             float gamma_, 
-            uint size_,
-            uint n_,
-            uint m_, 
             uint niter_,
             uint threads_num_,
             uint extra_logs_,
             uint tau_
             );
 
-        double bsa_operation();
+        float bsa_operation();
         
         void construct_sparse_blocks_vec();
         
@@ -61,13 +63,13 @@ namespace predictc{
         static std::atomic<int> done_workers;
         static std::atomic<int> global_time;
 
-        SpMat A;
+        fSpMat A;
 
-        Eigen::Ref<Eigen::MatrixXd> b;
-        Eigen::Ref<Eigen::MatrixXd> x_prev;
-        Eigen::Ref<Eigen::MatrixXd> x;
-        Eigen::Ref<Eigen::MatrixXd> P;
-        Eigen::Ref<Eigen::MatrixXd> Q;
+        fRMat b;
+        fRMat x_prev;
+        fRMat x;
+        fRMat P;
+        fRMat Q;
         Eigen::Ref<Eigen::MatrixXi> rows_id_seq;
         std::vector<Eigen::Map<Eigen::VectorXi>> all_batches;
         
@@ -75,18 +77,16 @@ namespace predictc{
         float epsilon;
         float gamma; 
         uint size;
-        uint n;
-        uint m; 
         uint niter;
         uint threads_num;
         uint extra_logs;
         uint tau;
 
-        std::unordered_map<int64_t, double> A_map;
-        std::unordered_map<int32_t, std::unordered_map<int32_t, double>> Af_map;
-
-        std::vector<std::vector<SpMat>> A_blocks_vec;
-        std::unordered_map<int32_t, std::unordered_map<int32_t, SpMat>> A_blocksf_map;
+        std::unordered_map<int64_t, float> A_map;
+        std::unordered_map<int32_t, std::unordered_map<int32_t, float>> Af_map;
+        
+        std::vector<std::vector<fSpMat>> A_blocks_vec;
+        fSpMatMap A_blocksf_map;
     };
 }
 #endif // BSA_H

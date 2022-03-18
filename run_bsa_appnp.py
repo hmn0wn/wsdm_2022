@@ -1,4 +1,4 @@
-from bsa_appnp.read_utils import utils
+from bsa_appnp.read_utils import utils_cpp, utils, sparse_serialize
 from bsa_appnp.bsa_appnp import bsann
 from bsa_appnp.GraphGenerator import  _precompute_block,  calc_A_hat, load_blocks, save_blocks, convert_sparse_matrix_to_sparse_tensor, calc_A_hatmod
 import os
@@ -19,52 +19,6 @@ import struct
 
 main_seed = 42
 tf.random.set_seed(0)
-
-def graphsave(adj, dir, to_sort=False):
-    if (sp.isspmatrix_csr(adj)):
-        el = adj.indices
-        pl = adj.indptr
-        data = adj.data
-
-        EL = np.array(el, dtype=np.uint32)
-        PL = np.array(pl, dtype=np.uint32)
-
-        EL_re = []
-        if to_sort:
-            for i in range(1, PL.shape[0]):
-                #EL_re += sorted(EL[PL[i - 1]:PL[i]], key=lambda x: PL[x + 1] - PL[x])
-                EL_re += sorted(EL[PL[i - 1]:PL[i]])
-        else:
-            EL_re = EL
-
-        EL_re = np.asarray(EL_re, dtype=np.uint32)
-
-        print("EL:", EL_re.shape, " size: ", EL_re.size)
-        f1 = open(dir + 'el.txt', 'wb')
-        for i in EL_re:
-            m = struct.pack('I', i)
-            f1.write(m)
-        f1.close()
-
-        print("PL:", PL.shape, " size: ", PL.size)
-        f2 = open(dir + 'pl.txt', 'wb')
-        for i in PL:
-            m = struct.pack('I', i)
-            f2.write(m)
-        f2.close()
-
-        print("DL:", data.shape, " size: ", data.size)
-        f3 = open(dir + 'dl.txt', 'wb')
-        for i in data:
-            m = struct.pack('d', i)
-            #print(m)
-            f3.write(m)
-        f3.close()
-
-        return EL_re.size, PL.size
-    else:
-        print("Format Error!")
-
 
 #@profile(precision=10)
 def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
@@ -113,7 +67,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
         rs.shuffle(batch_all)
         start = timer()
-        print('bs', batch_size)
+        #print('batch size', batch_size)
         partitions = np.array_split(batch_all, batch_size)
 
         tr_id_temp = rs.choice(train_idx, btl, False)
@@ -234,28 +188,16 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
         test_idx = [4,5]
         labels_test = [1,1]
+    
     if False:
-        adj_matrix_save_path =  f"bsa_appnp/data/adj_{data_name}.npz"
-        sp.save_npz(adj_matrix_save_path, Ah, compressed=True)
+        adj_matrix_save_path =  f"bsa_appnp/data/{data_name}.npz"
+        sp.save_npz(adj_matrix_save_path, Ah, compressed=False)
+    
     if False:
-        m,n = graphsave(Ah, f"bsa_appnp/data/{data_name}_adj_", to_sort=False)
-    else:
-        if data_name=="cora_full":
-            n, m = 18801, 125370
-        if data_name=="pubmed":
-            n, m = 19718, 88648
-        if data_name=='reddit':
-            n, m = 232966, 23446803
-        if data_name=='reddit':
-            n, m = 232966, 114615892
-        if data_name=='citeseer':
-            n, m = 2111, 7388
-        if data_name=='test':
-            n,m = 4,6
-        if data_name=='test1':
-            n,m = 7,15
+        Ah = Ah.tocsc()
+        sparse_serialize.serialize_sparse(f"bsa_appnp/data/{data_name}_A", Ah)
+    
 
-    #all_batches = [np.array([0,1], dtype=np.int32), np.array([3,4,5], dtype=np.int32), np.array([3,4,5,8], dtype=np.int32)]
     n_butches = len(all_batches)
     max_len = len(max(all_batches, key=len))
     all_batches_squared = []
@@ -271,13 +213,13 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
     epsilon=0.1 
     gamma=0.3
-    ED_mat = ED_mat.ravel(order='F').reshape(ED_mat.shape[0], ED_mat.shape[1], order='F').astype('float64')
+    ED_mat = ED_mat.ravel(order='F').reshape(ED_mat.shape[0], ED_mat.shape[1], order='F').astype('float32')
     Q = epsilon / n_butches + (1 - epsilon) * ED_mat
     
-    Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float64')
-    
+    Z = Z.ravel(order='F').reshape(Z.shape[0], Z.shape[1], order='F').astype('float32')
+
     b = (1 - alpha) * Z
-    A = Ah
+    A = Ah.astype('float32')
     x = Z
     P = ED_mat
     x_prev = copy.deepcopy(x)
@@ -314,28 +256,41 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
             rows_id_seq = np.array([np.array(el) for el in rows_id_seq])
             rows_id_seq = rows_id_seq.transpose()
+        
         with open("./logs/bsa_serialized.py.log", "w") as f:
-            f.write(f"{data_name} {Ah.shape[0]} {n} {m} {niter} {epsilon} {gamma} {thread_num} {tau}")
+            f.write(f"{data_name} {niter} {epsilon} {gamma} {thread_num} {tau}")
 
         #print_matsp_i("./logs", f"A", A)
-        utils.print_mat("./logs", "b", b)
-        utils.print_mat("./logs", "x", x)
-        utils.print_mat("./logs", "x_prev", x_prev)
-        utils.print_mat("./logs", "P", P)
-        utils.print_mat("./logs", "Q", Q)
-        #utils.print_mat("./logs", "all_batches", all_batches)
-        utils.print_mat("./logs", "rows_id_seq", rows_id_seq)
-        utils.print_mat("./logs", "all_batches_squared", all_batches_squared)
+        utils_cpp.print_mat("./logs", "b", b)
+        utils_cpp.print_mat("./logs", "x", x)
+        utils_cpp.print_mat("./logs", "x_prev", x_prev)
+        utils_cpp.print_mat("./logs", "P", P)
+        utils_cpp.print_mat("./logs", "Q", Q)
+        #utils_cpp.print_mat("./logs", "all_batches", all_batches)
+        utils_cpp.print_mat("./logs", "rows_id_seq", rows_id_seq)
+        utils_cpp.print_mat("./logs", "all_batches_squared", all_batches_squared)
 
         #print(f"python: extra_logs={extra_logs}")
     else:
-        rows_id_seq=utils.read_mat("./logs/rows_id_seq_mat.py.log")
+        rows_id_seq=utils_cpp.read_mat("./logs/rows_id_seq_mat.py.log")
         rows_id_seq = rows_id_seq.ravel(order='F').reshape(rows_id_seq.shape[0], rows_id_seq.shape[1], order='F').astype('int32')
         #rows_id_seq = rows_id_seq.astype('int32')
 
 
 
     linear_time = 0
+    A_map = dict()
+    for worker_index in range(rows_id_seq.shape[0]):
+        rows_id = worker_index
+        A_map[rows_id] = dict()
+        for work_index in range(tau):
+            batch_id = rows_id_seq[worker_index, work_index]
+            rows_ = all_batches[rows_id]
+            cols_ = all_batches[batch_id]
+            A_map[rows_id][batch_id] = A[rows_, :][:, cols_]
+
+    sparse_serialize.serialize_sparse_map(f"bsa_appnp/data/{data_name}_A_map", A_map)
+
     if bsa_type_cpp:
         py_bsa = BSAcpp(\
             b,\
@@ -348,22 +303,22 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
             data_name,
             epsilon,
             gamma,
-            Ah.shape[0],
-            n,
-            m,
             niter, 
             thread_num,
             extra_logs,
             tau)
         py_bsa.bsa_operation()
+        accuracy_prev = accuracy_score(labels_test, np.argmax(x_prev[test_idx], axis=1))
         accuracy_ = accuracy_score(labels_test, np.argmax(x[test_idx], axis=1))
         print(f"sum cpp : ", x.sum())
+        print(f"accuracy{tau-1} cpp: {accuracy_prev}")
+        print(f"accuracy{tau} cpp: {accuracy_}")
 
 
         print("="*50)
     else:
         Z, linear_time = \
-            BSA(A=A,
+            BSA(A_map=A_map,
                 b=b,
                 x_prev=x_prev,
                 x=x,
@@ -377,10 +332,12 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
                 gamma=gamma,
                 seed=main_seed,
                 extra_logs=extra_logs)
+        accuracy_prev = accuracy_score(labels_test, np.argmax(x_prev[test_idx], axis=1))
         accuracy_ = accuracy_score(labels_test, np.argmax(Z[test_idx], axis=1))
+        
         print(f"sum py  : ", x.sum())
-
-    print('accuracy', accuracy_)
+        print(f"accuracy{tau-1} py: {accuracy_prev}")
+        print(f"accuracy{tau} py: {accuracy_}")
     
     #return accuracy_, \
     #       training_time, \
@@ -394,15 +351,15 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
 def check():
 
-    res_py = utils.read_mat("./logs/x_res_mat.py.log")
-    res_cpp = utils.read_mat("./logs/x_res_mat.cpp.log")
+    res_py = utils_cpp.read_mat("./logs/x_res_mat.py.log")
+    res_cpp = utils_cpp.read_mat("./logs/x_res_mat.cpp.log")
     print("="*50)
     print(f"sum cpp : ", res_py.sum())
     print(f"sum py  : ", res_cpp.sum())
     print(f"diff sum: ", (res_cpp - res_py).sum())
 
 
-def accuracy_check(data_name):
+def accuracy_check(data_name, tau):
     
     file_path = f'{data_name}.npz'
     A, attr_matrix, labels, train_idx, val_idx, test_idx =\
@@ -414,15 +371,17 @@ def accuracy_check(data_name):
 
     labels_test = labels[test_idx]
 
-    res_py = utils.read_mat("./logs/x_res_mat.py.log")
-    res_cpp = utils.read_mat("./logs/x_res_mat.cpp.log")
-
+    res_py = utils_cpp.read_mat("./logs/x_res_mat.py.log")
+    res_cpp = utils_cpp.read_mat("./logs/x_res_mat.cpp.log")
+    
     accuracy_py = accuracy_score(labels_test, np.argmax(res_py[test_idx], axis=1))
     accuracy_cpp = accuracy_score(labels_test, np.argmax(res_cpp[test_idx], axis=1))
 
-    print('accuracy py: ', accuracy_py)
-    print('accuracy cpp: ', accuracy_cpp)
-    
+    print(f"accuracy py: {accuracy_py}")
+    print(f"accuracy cpp: {accuracy_cpp}")
+
+
+
 if __name__ == "__main__":
     import sys, getopt
     argv = (sys.argv[1:])
@@ -435,13 +394,13 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 1 #100
+    tau = 1#100
     niter = 1
     dim = 64
     mepoch = 200#  200
     bsa_type_cpp = False
     thread_num = 6
-    dataset_name = 'pubmed'#'pubmed'
+    dataset_name = 'reddit'#'pubmed'
     load_check = False
     extra_logs = 0
     persent = 100
@@ -521,7 +480,7 @@ if __name__ == "__main__":
             )
             check()
         elif opt == "-e":
-            accuracy_check(dataset_name)
+            accuracy_check(dataset_name, tau=tau)
         else:
             assert(False and "WRONG CMD FLAG")
 

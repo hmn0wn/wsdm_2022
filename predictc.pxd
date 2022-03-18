@@ -10,11 +10,11 @@ cdef extern from "bsa.cpp":
 cdef extern from "bsa.h" namespace "predictc":
     cdef cppclass Bsa:
         Bsa(\
-        Map[MatrixXd] &, \
-        Map[MatrixXd] &, \
-        Map[MatrixXd] &, \
-        Map[MatrixXd] &, \
-        Map[MatrixXd] &, \
+        Map[MatrixXf] &, \
+        Map[MatrixXf] &, \
+        Map[MatrixXf] &, \
+        Map[MatrixXf] &, \
+        Map[MatrixXf] &, \
         Map[MatrixXi] &, \
         FlattenedMapWithOrder[Array, int, Dynamic, Dynamic, RowMajor] &, \
         string, \
@@ -23,9 +23,6 @@ cdef extern from "bsa.h" namespace "predictc":
         uint, \
         uint, \
         uint, \
-        uint, \
-        uint, \
-        uint, \
         uint) except+
 
-        double bsa_operation()
+        float bsa_operation()

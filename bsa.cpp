@@ -16,10 +16,10 @@
 #define MAX_PRINT_NUM 999999
 
 void slice(
-    const SpMat &X,
+    const fSpMat &X,
     const Eigen::Map<Eigen::VectorXi> &R,
     const Eigen::Map<Eigen::VectorXi> &C,
-    SpMat &Y)
+    fSpMat &Y)
 {
   int xm = X.rows();
   int xn = X.cols();
@@ -40,7 +40,7 @@ void slice(
 
     std::vector<std::vector<int>> RI;
     std::vector<std::vector<int>> CI;
-    std::vector<Trip> entries;
+    std::vector<fTrip> entries;
 
   // Build reindexing maps for columns and rows
     RI.clear();
@@ -68,7 +68,7 @@ void slice(
   for (int k = 0; k < X.outerSize(); ++k)
   {
     // Iterate over inside
-    for (typename Eigen::SparseMatrix<double>::InnerIterator it(X, k); it; ++it)
+    for (typename Eigen::SparseMatrix<float>::InnerIterator it(X, k); it; ++it)
     {
       for (auto rit = RI[it.row()].begin(); rit != RI[it.row()].end(); rit++)
       {
@@ -277,8 +277,8 @@ const Eigen::SparseMatrix<Derived>& matrix)
     {
         for (uint j = 0; j < MAX_PRINT_NUM && j < matrix.cols(); ++j)
         {
-            double el = matrix.coeff(i, j);
-            double eps = 0.001;
+            float el = matrix.coeff(i, j);
+            float eps = 0.001;
             if(el - eps > 0.0)
             {
                 fcpplog << i << "\t" << j << "\t\t: " << el << std::endl;
@@ -352,125 +352,11 @@ void read_mat(std::string path, Eigen::PlainObjectBase<Derived>& matrix, bool to
     {
         for (uint j = 0; j < m; ++j)
         {
-            double tmp;
+            float tmp;
             fcpplog >> tmp; 
             matrix(i, j) = (Scalar)tmp;
         }
     }
-}
-
-void read_sparse_matrix(uint n_, uint m_, std::string &dataset_name, SpMat &A)
-{
-
-    std::vector<uint> el=std::vector<uint>(m_);
-    std::vector<uint> pl=std::vector<uint>(n_);
-    std::vector<double> dl=std::vector<double>(m_);
-
-
-    std::string dataset_el="bsa_appnp/data/"+dataset_name+"_adj_el.txt";
-    const char *p1=dataset_el.c_str();
-    if (FILE *f1 = fopen(p1, "rb"))
-    {
-        size_t rtn = fread(el.data(), sizeof el[0], el.size(), f1);
-        if(rtn!=m_)
-        {
-            std::cout << "Error! " << dataset_el << " Incorrect read! " << std::endl;
-            std::cout << "m_ " << m_ << " rtn " << rtn << std::endl;
-            assert(false);
-        }
-        fclose(f1);
-    }
-    else
-    {
-        std::cout<<dataset_el<<" Not Exists.\r"<<std::endl;
-        assert(false);
-        exit(1);
-    }
-
-    std::string dataset_pl="bsa_appnp/data/"+dataset_name+"_adj_pl.txt";
-    const char *p2=dataset_pl.c_str();
-
-    if (FILE *f2 = fopen(p2, "rb"))
-    {
-        uint rtn = fread(pl.data(), sizeof pl[0], pl.size(), f2);
-        if(rtn!=n_)
-        {
-            std::cout << "Error! " << dataset_pl << " Incorrect read!" << std::endl;
-            std::cout << "n_ " << n_ << " rtn " << rtn << std::endl;
-            assert(false);
-        }
-        fclose(f2);
-    }
-    else
-    {
-        std::cout<<dataset_pl<<" Not Exists."<<"\r"<<std::endl;
-        assert(false);
-        exit(1);
-    }
-
-    std::string dataset_dl="bsa_appnp/data/"+dataset_name+"_adj_dl.txt";
-    const char *p3=dataset_dl.c_str();
-
-    if (FILE *f3 = fopen(p3, "rb"))
-    {
-        size_t rtn = fread(dl.data(), sizeof dl[0], dl.size(), f3);
-        if(rtn!=m_)
-        {
-            std::cout << "Error! " << dataset_dl << " Incorrect read!" << std::endl;
-            std::cout << "m_ " << m_ << " rtn " << rtn << std::endl;
-            assert(false);
-        }
-        fclose(f3);
-    }
-    else
-    {
-        std::cout << dataset_pl << " Not Exists." << std::endl;
-        assert(false);
-        exit(1);
-    }
-
-    std::cout << "Read finished\r"<<std::endl;
-    if(false)
-    {
-        std::cout << "el: ";
-        for (uint i = 0; i < 20 && i < el.size(); ++i)
-        {
-            std::cout << el[i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "pl: ";
-        for (uint i = 0; i < 20 && i < pl.size(); ++i)
-        {
-            std::cout << pl[i] << " ";
-        }
-        std::cout << std::endl;
-        
-        std::cout << "dl: ";
-        for (uint i = 0; i < 20 && i < dl.size(); ++i)
-        {
-            std::cout << dl[i] << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    std::vector<Trip> triplets;
-    triplets.reserve(el.size());
-    for(uint i = 0; i < n_-1; ++i)
-    {
-        for(uint jptr = pl[i]; jptr < pl[i+1]; ++jptr)
-        {
-            int j = el[jptr];
-            double d = dl[jptr];
-            triplets.push_back(Trip(i, j, d));
-            //int64_t index = (int64_t)i << 32 | (int64_t)j;
-            //A_map[index] = d;
-            //Af_map[i][j] = d;
-            //std::cout <<  i << "\t\t" << j << ": " << d << std::endl;
-        }
-    }
-
-    A.setFromTriplets(triplets.begin(), triplets.end());
 }
 
 std::vector<Eigen::Map<Eigen::VectorXi>> remove_negative(Eigen::Map<RowMajorArray> &all_batches)
@@ -499,11 +385,195 @@ std::vector<Eigen::Map<Eigen::VectorXi>> remove_negative(Eigen::Map<RowMajorArra
     return all_batches_;
 } 
 
+void read_sparse_matrixf(FILE *file, fSpMat &mat)
+{
+    uint32_t is_csr = 0;
+    uint32_t indices_size = 0;
+    uint32_t indptr_size = 0;
+    uint32_t rows = 0;
+    uint32_t cols = 0;
+
+    
+    fread(&is_csr, sizeof(uint32_t), 1, file);
+    fread(&rows, sizeof(uint32_t), 1, file);
+    fread(&cols, sizeof(uint32_t), 1, file);
+    fread(&indices_size, sizeof(uint32_t), 1, file);
+    fread(&indptr_size, sizeof(uint32_t), 1, file);
+
+
+    std::vector<uint32_t> indices(indices_size);
+    std::vector<uint32_t> indptr(indptr_size);
+    std::vector<float> data(indices_size);
+
+    fread(indices.data(), sizeof(uint32_t), indices_size, file);
+    fread(indptr.data(), sizeof(uint32_t), indptr_size, file);
+    fread(data.data(), sizeof(float), indices_size, file);
+
+    if(false)
+    {
+        std::cout << "is_csr      : " << is_csr << std::endl;
+        std::cout << "rows        : " << rows << std::endl;
+        std::cout << "cols        : " << cols << std::endl;
+        std::cout << "indices_size: " << indices_size << std::endl;
+        std::cout << "indptr_size : " << indptr_size << std::endl;
+
+        std::cout << "indices: ";
+        for (uint i = 0; i < 20 && i < indices.size(); ++i)
+        {
+            std::cout << indices[i] << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "indptr: ";
+        for (uint i = 0; i < 20 && i < indptr.size(); ++i)
+        {
+            std::cout << indptr[i] << " ";
+        }
+        std::cout << std::endl;
+        
+        std::cout << "data: ";
+        for (uint i = 0; i < 20 && i < data.size(); ++i)
+        {
+            std::cout << data[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+    else
+    {
+        //std::cout << "Read finished"<<std::endl;
+    }
+
+    std::vector<Eigen::Triplet<float>> triplets;
+    triplets.reserve(indices_size);
+    for(uint32_t i = 0; i < indptr_size-1; ++i)
+    {
+        for(uint32_t jptr = indptr[i]; jptr < indptr[i+1]; ++jptr)
+        {
+            uint32_t j = indices[jptr];
+            float d = data[jptr];
+            if(is_csr == 1)
+            {
+                triplets.push_back(Eigen::Triplet<float>(i, j, d));
+            }
+            else
+            {
+                triplets.push_back(Eigen::Triplet<float>(j, i, d));
+            }
+        }
+    }
+    mat.resize(rows,cols);
+    mat.setFromTriplets(triplets.begin(), triplets.end());
+    
+}
+
+void read_sparse_matrixf_fast(FILE *file, fSpMat &mat)
+{
+    uint32_t is_csr = 0;
+    uint32_t rows = 0;
+    uint32_t cols = 0;
+    uint32_t indices_size = 0; //nnz
+    uint32_t indptr_size = 0;  //outSz
+
+    fread(&is_csr, sizeof(uint32_t), 1, file);
+    fread(&rows, sizeof(uint32_t), 1, file);
+    fread(&cols, sizeof(uint32_t), 1, file);
+    fread(&indices_size, sizeof(uint32_t), 1, file);
+    fread(&indptr_size, sizeof(uint32_t), 1, file);
+
+    mat.resize(rows, cols);
+    mat.makeCompressed();
+    mat.resizeNonZeros(indices_size);
+
+    fread(mat.innerIndexPtr(), sizeof(uint32_t), indices_size, file);       //indices
+    fread(mat.outerIndexPtr(), sizeof(uint32_t), indptr_size, file);  //indptr
+    fread(mat.valuePtr(), sizeof(float), indices_size, file);          //data
+
+    mat.finalize();
+    
+    if(false)
+    {
+        std::cout << "is_csr      : " << is_csr << std::endl;
+        std::cout << "rows        : " << rows << std::endl;
+        std::cout << "cols        : " << cols << std::endl;
+        std::cout << "indices_size: " << indices_size << std::endl;
+        std::cout << "indptr_size : " << indptr_size << std::endl;
+
+        std::cout << "indices: ";
+        for (uint i = 0; i < 20 && i < indices_size; ++i)
+        {
+            std::cout << mat.innerIndexPtr()[i] << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "indptr: ";
+        for (uint i = 0; i < 20 && i < indptr_size; ++i)
+        {
+            std::cout << mat.outerIndexPtr()[i] << " ";
+        }
+        std::cout << std::endl;
+        
+        std::cout << "data: ";
+        for (uint i = 0; i < 20 && i < indices_size; ++i)
+        {
+            std::cout << mat.valuePtr()[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+    else
+    {
+        //std::cout << "Read finished"<<std::endl;
+    }
+}
+
+void parse_spmatrixf(std::string mat_path, fSpMat &mat)
+{
+    //std::cout << BR50;
+    //std::cout << mat_path << std::endl;
+    FILE *file = fopen(mat_path.c_str(), "rb");
+    
+    if(!file)
+    {
+        std::cout << "Read failed"<<std::endl;
+        return;
+    }
+    //read_sparse_matrixf(file, mat);
+    read_sparse_matrixf_fast(file, mat);
+    fclose(file);
+}
+
+void parse_spmatrixf(std::string mat_path, fSpMatMap &mat_map)
+{
+    //std::cout << BR50;
+    //std::cout << mat_path << std::endl;
+    FILE *file = fopen(mat_path.c_str(), "rb");
+    
+    if(!file)
+    {
+        std::cout << "Read failed"<<std::endl;
+        return;
+    }
+
+    uint32_t num = 0, row_id = 0, batch_id = 0;
+    fread(&num, sizeof(uint32_t), 1, file);
+    //std::cout << "num: " << num << std::endl;
+    for(uint32_t i = 0; i < num; ++i)
+    {
+        fread(&row_id, sizeof(uint32_t), 1, file);
+        fread(&batch_id, sizeof(uint32_t), 1, file);
+        //std::cout << BR50;
+        //std::cout << "row_id: " << row_id << std::endl;
+        //std::cout << "batch_id: " << batch_id << std::endl;
+        mat_map[row_id][batch_id] = fSpMat();
+        //read_sparse_matrixf(file, mat_map[row_id][batch_id]);
+        read_sparse_matrixf_fast(file, mat_map[row_id][batch_id]);
+    }
+    fclose(file);
+}
 namespace predictc{
 
     void Bsa::construct_sparse_blocks_vec()
     {
-        double prep_t, cclock_t;
+        float prep_t, cclock_t;
         struct timeval t_start,t_end;
         clock_t start_t, end_t;
         gettimeofday(&t_start,NULL);
@@ -528,7 +598,7 @@ namespace predictc{
         }
 
         end_t = clock();
-        cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        cclock_t = (float)(end_t - start_t) / CLOCKS_PER_SEC;
         gettimeofday(&t_end, NULL);
         prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
 
@@ -539,32 +609,60 @@ namespace predictc{
 
     void Bsa::construct_sparse_blocks_mat()
     {
-        double prep_t, cclock_t;
+        float prep_t, cclock_t;
         struct timeval t_start,t_end;
         clock_t start_t, end_t;
         gettimeofday(&t_start,NULL);
         start_t = clock();
+        
 
         A_blocksf_map.reserve(tau);
-        for(uint work_index=0; work_index < tau; ++work_index)
+        for (int i = 0; i < rows_id_seq.rows(); ++i)
         {
-            auto rows_ = all_batches[work_index];
-            for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
-            {
-                uint rows_id = worker_index;
-                uint batch_id = rows_id_seq(worker_index, work_index);
-
-                auto cols_ = all_batches[worker_index];
-                
-                A_blocksf_map[rows_id][batch_id] = SpMat();
-
-                A_blocksf_map[rows_id][batch_id].resize(rows_.size(), cols_.size());
-                slice(A,rows_,cols_, A_blocksf_map[rows_id][batch_id]);
+            //A_blocksf_map[i] = std::unordered_map<int32_t, std::shared_ptr<SpMat>>();
+            for(uint work_index=0; work_index < tau; ++work_index)
+            {   
+                //uint batch_id = rows_id_seq(i, work_index);
+                //A_blocksf_map[i][batch_id] = std::make_shared<SpMat>();
             }
         }
+        uint thread_num_ = 1;
+        std::vector<std::thread> workers;
+        for (int i = 0; i < rows_id_seq.rows(); ++i)
+        {
+            auto rows_ = all_batches[i];
+            for(uint work_index=0; work_index < tau; ++work_index)
+            {   
+                uint batch_id = rows_id_seq(i, work_index);
+                workers.push_back(std::thread([=]() 
+                {
+                    auto cols_ = all_batches[batch_id];
+                    //std::cout << "construct: " << i << " <- " << batch_id << std::endl;
+                    if (A_blocksf_map[i].find(batch_id) == A_blocksf_map[i].end())
+                    {
+                        A_blocksf_map[i][batch_id] = fSpMat();
+                        A_blocksf_map[i][batch_id].resize(rows_.size(), cols_.size());
+                        slice(A,rows_,cols_, A_blocksf_map[i][batch_id]);
+                    }
+                }));
+                if(workers.size() >= thread_num_)
+                {
+                    for(uint j=0; j < workers.size(); ++j)
+                    {
+                        workers[j].join();
+                    }
+                    workers.clear();
+                }
+            }
+        }
+        for(uint j=0; j < workers.size(); ++j)
+        {
+            workers[j].join();
+        }
+        workers.clear();
 
         end_t = clock();
-        cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        cclock_t = (float)(end_t - start_t) / CLOCKS_PER_SEC;
         gettimeofday(&t_end, NULL);
         prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
 
@@ -582,41 +680,24 @@ namespace predictc{
 
         
     Bsa::Bsa(
-        Eigen::Map<Eigen::MatrixXd> &b_,
-        Eigen::Map<Eigen::MatrixXd> &x_prev_,
-        Eigen::Map<Eigen::MatrixXd> &x_,
-        Eigen::Map<Eigen::MatrixXd> &P_,
-        Eigen::Map<Eigen::MatrixXd> &Q_,
+        fMMat &b_,
+        fMMat &x_prev_,
+        fMMat &x_,
+        fMMat &P_,
+        fMMat &Q_,
         Eigen::Map<Eigen::MatrixXi> &rows_id_seq_,
         Eigen::Map<RowMajorArray> &all_batches_,
         std::string dataset_name_,
-        float epsilon_,
-        float gamma_, 
-        uint size_,
-        uint n_,
-        uint m_, 
-        uint niter_,
-        uint threads_num_,
-        uint extra_logs_,
-        uint tau_
+        float epsilon_, float gamma_, 
+        uint niter_, uint threads_num_,
+        uint extra_logs_, uint tau_
     ) : 
-        b(b_),
-        x_prev(x_prev_),
-        x(x_),
-        P(P_),
-        Q(Q_),
-        rows_id_seq(rows_id_seq_),
+        b(b_), x_prev(x_prev_), x(x_), P(P_), Q(Q_), rows_id_seq(rows_id_seq_),
         all_batches(remove_negative(all_batches_)),
         dataset_name(dataset_name_),
-        epsilon(epsilon_),
-        gamma(gamma_),
-        size(size_),
-        n(n_),
-        m(m_),
-        niter(niter_),
-        threads_num(threads_num_),
-        extra_logs(extra_logs_),
-        tau(tau_)
+        epsilon(epsilon_), gamma(gamma_),
+        niter(niter_), threads_num(threads_num_),
+        extra_logs(extra_logs_), tau(tau_)
     {
         worker_func_begin_wall = true;
 		worker_func_end_wall = true;
@@ -625,10 +706,10 @@ namespace predictc{
         dispatcher_must_exit = false;
         done_workers = 0;
 
+        std::cout << "BSA cpp" << std::endl;
         if(extra_logs)
         {
             std::cout << "dataset name: " << dataset_name << std::endl;
-            std::cout << "size_: " << size << "n: " << n << std::endl << "m: " << m << std::endl;
             std::cout << "b:" << b.rows() << " " << b.cols() << std::endl;
             std::cout << "x:" << x.rows() << " " << x.cols() << std::endl;
             std::cout << "niter" << niter << std::endl;
@@ -641,14 +722,14 @@ namespace predictc{
         }
 
         assert(dataset_name.size() > 0);
-        //assert(n_ > 0 && n_ < 200000 && m_ > 0 && m_ < 200000);
 
-        std::cout << "BSA cpp" << std::endl;
-        A.resize(size, size);
-        read_sparse_matrix(n, m, dataset_name, A);
+        std::string sp_name = std::string("bsa_appnp/data/") + dataset_name + std::string("_A_sp.pack");
+        std::string spmap_name = std::string("bsa_appnp/data/") + dataset_name + std::string("_A_map_sp.pack");
+        //parse_spmatrixf(sp_name, A);
+        parse_spmatrixf(spmap_name, A_blocksf_map);
         
         //construct_sparse_blocks_vec();
-        construct_sparse_blocks_mat();
+        //construct_sparse_blocks_mat();
 
         if(extra_logs)
         {
@@ -663,8 +744,7 @@ namespace predictc{
             
 
             std::ofstream bsa_serialized("./logs/bsa_serialized.cpp.log");
-            bsa_serialized << dataset_name << " " << size
-            << " " << n << " " << m 
+            bsa_serialized << dataset_name << " "
             << " " << niter 
             << " " << epsilon << " " << gamma
             << " " << threads_num << " " << tau;
@@ -672,9 +752,9 @@ namespace predictc{
         }
     }
     
-    double Bsa::bsa_operation()
+    float Bsa::bsa_operation()
     {
-        double prep_t, cclock_t;
+        float prep_t, cclock_t;
         struct timeval t_start,t_end;
         clock_t start_t, end_t;
         gettimeofday(&t_start,NULL);
@@ -683,13 +763,14 @@ namespace predictc{
         std::cout << BR50;
         std::cout << "update: ";
         
-        bsa();
+        //bsa();
+        bsa_multithread_all();
         //bsa_multithread();
         //bsa_multithread1();
-        //bsa_multithread_all();
+
 
         end_t = clock();
-        cclock_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        cclock_t = (float)(end_t - start_t) / CLOCKS_PER_SEC;
         gettimeofday(&t_end, NULL);
         prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
         std::cout << BR50;
@@ -705,17 +786,16 @@ namespace predictc{
 
     void Bsa::bsa()
     {
-        SpMat A_rows_cols;
-        Eigen::MatrixXd x_rows;
-        Eigen::MatrixXd x_cols;
-        Eigen::MatrixXd b_rows;
+        Eigen::MatrixXf x_rows;
+        Eigen::MatrixXf x_cols;
+        Eigen::MatrixXf b_rows;
 
         std::cout << "bsa tau: " << tau << std::endl;
         for(uint iter=0; iter < tau; ++iter)
         {
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
-                std::cout << worker_index << " " << iter << std::endl;
+                //std::cout << "bsa update: " worker_index << " " << iter << std::endl;
                 uint rows_id = worker_index;
                 uint batch_id = rows_id_seq(worker_index, iter);
 
@@ -728,24 +808,38 @@ namespace predictc{
                
                 if(true)
                 {
-                    //slice(A,rows_,cols_,A_rows_cols);
-                    auto &A_rows_cols_ = A_blocks_vec[rows_id][batch_id];
-                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    auto &A_rows_cols_map = A_blocksf_map[rows_id][batch_id];
+                    if (extra_logs)
+                    {
+                        fSpMat A_rows_cols;
+                        slice(A, rows_, cols_, A_rows_cols);
+                        auto &A_rows_cols_vec = A_blocks_vec[rows_id][batch_id];
+                        std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
+                            std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
+                        print(std::string("./logs/loops/") + findex + std::string("_A")  + 
+                        std::string("_mat.cpp.log"), A_rows_cols, true);
+                        print(std::string("./logs/loops/") + findex + std::string("_A_map")  + 
+                        std::string("_mat.cpp.log"), A_rows_cols_map, true);
+                        print(std::string("./logs/loops/") + findex + std::string("_A_vec")  + 
+                        std::string("_mat.cpp.log"), A_rows_cols_vec, true);
+                    }
+
+                    float q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     if(iter%2)
                     {
-                        x_prev(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_* x(cols_,Eigen::all) - 
+                        x_prev(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_map* x(cols_,Eigen::all) - 
                         x(rows_, Eigen::all) + b(rows_,Eigen::all));
                     }
                     else
                     {
-                        x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_ * x_prev(cols_,Eigen::all) - 
+                        x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_map * x_prev(cols_,Eigen::all) - 
                         x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));                
                     }
                 }
                 
                 if(false)
                 {
-                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    float q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     
                     for (int ir = 0; ir < rows_.size(); ++ir)
                     {
@@ -756,7 +850,7 @@ namespace predictc{
                         auto &Af_map_row = Af_map[row_index];
                         for(int jr = 0; jr < x_row.size(); ++jr)
                         {
-                            double A_xcol = 0;
+                            float A_xcol = 0;
                             for(int ic = 0; ic < cols_.size(); ++ic)
                             {
                                 auto col_index =cols_[ic];
@@ -777,20 +871,20 @@ namespace predictc{
 
                 if(false)
                 {
-                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    float q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     
                     for (int ir = 0; ir < rows_.size(); ++ir)
                     {
                         auto row_index = rows_[ir];
-                        double* x_ = iter%2 ? x_prev.data() : x.data();
-                        double* x_prev_ = iter%2 ? x.data() : x_prev.data();
+                        float* x_ = iter%2 ? x_prev.data() : x.data();
+                        float* x_prev_ = iter%2 ? x.data() : x_prev.data();
                         int n = x.rows();
-                        double* b_ = b.data();
+                        float* b_ = b.data();
                         //auto &Af_map_row = Af_map[row_index];
 
                         for(int jr = 0; jr < x.cols(); ++jr)
                         {
-                            double A_xcol = 0;
+                            float A_xcol = 0;
                             for(int ic = 0; ic < cols_.size(); ++ic)
                             {
                                 auto col_index =cols_[ic];
@@ -809,20 +903,20 @@ namespace predictc{
 
                 if(false)
                 {
-                    double q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
+                    float q = 1.0/pow((1+iter),this->gamma) * jump/qjump;
                     
                     for (int ir = 0; ir < rows_.size(); ++ir)
                     {
                         auto row_index = rows_[ir];
-                        double* x_ = iter%2 ? x_prev.data() : x.data();
-                        double* x_prev_ = iter%2 ? x.data() : x_prev.data();
+                        float* x_ = iter%2 ? x_prev.data() : x.data();
+                        float* x_prev_ = iter%2 ? x.data() : x_prev.data();
                         int n = x.rows();
-                        double* b_ = b.data();
+                        float* b_ = b.data();
                         //auto &Af_map_row = Af_map[row_index];
 
                         for(int jr = 0; jr < x.cols(); ++jr)
                         {
-                            double A_xcol = 0;
+                            float A_xcol = 0;
                             for(int ic = 0; ic < cols_.size(); ++ic)
                             {
                                 auto col_index =cols_[ic];
@@ -849,7 +943,7 @@ namespace predictc{
                     std::string findex = std::to_string(iter) + std::string("_") + std::to_string(worker_index) +
                         std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
                         
-                    print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols, true);
+                    //print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols, true);
                                 
                     print(std::string("./logs/loops/") +findex + std::string("_rows")   + std::string("_mat.cpp.log"), rows_);
                     print(std::string("./logs/loops/") +findex + std::string("_cols")   + std::string("_mat.cpp.log"), cols_);
@@ -888,7 +982,7 @@ namespace predictc{
 
     void Bsa::bsa_worker1(uint worker_index, uint work_index)
     {
-        SpMat A_rows_cols;
+        fSpMat A_rows_cols;
         uint rows_id = rows_id_seq(worker_index, work_index);
         uint batch_id = rows_id_seq(worker_index, work_index+1);
 
@@ -899,7 +993,7 @@ namespace predictc{
         jump *= 1; qjump*= 1;
 
         slice(A,rows_,cols_,A_rows_cols);
-        double q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
+        float q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
         x(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x(cols_,Eigen::all) - x(rows_, Eigen::all) + b(rows_,Eigen::all));
     }
 
@@ -911,17 +1005,9 @@ namespace predictc{
         
             for (int worker_index = 0; worker_index < rows_id_seq.rows(); ++worker_index)
             {
-                if(work_index % 2)
-                {
-                    //std::cout << "x --> x_prev" << std::endl;
-                    ths.push_back(std::thread(&Bsa::bsa_worker_all, this, worker_index, work_index));
-                
-                }
-                else
-                {
-                    //std::cout << "x_prev --> x" << std::endl;
-                    ths.push_back(std::thread(&Bsa::bsa_worker_all, this, worker_index, work_index));
-                }
+               
+                //std::cout << "x --> x_prev" << std::endl;
+                ths.push_back(std::thread(&Bsa::bsa_worker_all, this, worker_index, work_index));
 
                 //ths[worker_index].join();
             }
@@ -936,7 +1022,6 @@ namespace predictc{
 
     void Bsa::bsa_worker_all(uint worker_index, uint work_index)
     {
-        SpMat A_rows_cols;
         uint rows_id = worker_index;
         uint batch_id = rows_id_seq(worker_index, work_index);
         //std::cout << "id: " << batch_id << " --> " << rows_id << std::endl;
@@ -946,16 +1031,28 @@ namespace predictc{
         auto qjump = Q(rows_id, batch_id);
         jump *= 1; qjump*= 1;
 
-        slice(A,rows_,cols_,A_rows_cols);
-        double q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
-        x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols * x_prev(cols_,Eigen::all) - x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));\
-        
+
+        //SpMat A_rows_cols;
+        //slice(A,rows_,cols_,A_rows_cols);
+        auto &A_rows_cols_map = A_blocksf_map[rows_id][batch_id];
+        float q = 1.0/pow((1+work_index),this->gamma) * jump/qjump;
+        if(work_index % 2)
+        {
+            x_prev(rows_, Eigen::all) = x(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_map* x(cols_,Eigen::all) - 
+            x(rows_, Eigen::all) + b(rows_,Eigen::all));
+        }
+        else
+        {
+            x(rows_, Eigen::all) = x_prev(rows_, Eigen::all) + q*((1/jump) * A_rows_cols_map * x_prev(cols_,Eigen::all) - 
+            x_prev(rows_, Eigen::all) + b(rows_,Eigen::all));                
+        }
+
         if (extra_logs)
         {
             std::string findex = std::to_string(work_index) + std::string("_") + std::to_string(worker_index) +
                 std::string("_") + std::to_string(batch_id) + std::string("->") + std::to_string(rows_id);
                 
-            print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols);
+            print(std::string("./logs/loops/") +findex + std::string("_A")  + std::string("_mat.cpp.log"), A_rows_cols_map);
                         
             print(std::string("./logs/loops/") +findex + std::string("_rows")   + std::string("_mat.cpp.log"), rows_);
             print(std::string("./logs/loops/") +findex + std::string("_cols")   + std::string("_mat.cpp.log"), cols_);
@@ -970,6 +1067,7 @@ namespace predictc{
 
     }
 }
+
 #ifndef CYTHON_COMPILE
 
 void accuracy_check()
@@ -994,15 +1092,12 @@ int main()
     std::cout << BR50;
 
     std::string dataset_name;
-    uint size;
-    uint n;
-    uint m;
-    Eigen::MatrixXd b;
-    Eigen::MatrixXd x_prev;
-    Eigen::MatrixXd x;
+    Eigen::MatrixXf b;
+    Eigen::MatrixXf x_prev;
+    Eigen::MatrixXf x;
     uint niter;
-    Eigen::MatrixXd P;
-    Eigen::MatrixXd Q;
+    Eigen::MatrixXf P;
+    Eigen::MatrixXf Q;
     uint tau;
 
     MatrixXiRowMajor all_batches;
@@ -1011,14 +1106,13 @@ int main()
     float epsilon, gamma;
     uint threads_num;
 
-    Eigen::MatrixXd res_py;
-    Eigen::MatrixXd res_cpp;
+    Eigen::MatrixXf res_py;
+    Eigen::MatrixXf res_cpp;
 
     std::ifstream bsa_serialized("./logs/bsa_serialized.py.log");
     assert(!bsa_serialized.fail());
 
-    bsa_serialized >> dataset_name >> size
-    >> n >> m
+    bsa_serialized >> dataset_name
     >> niter 
     >> epsilon >> gamma
     >> threads_num >> tau;
@@ -1027,8 +1121,7 @@ int main()
 
 
 
-    std::cout << dataset_name << " " << size
-            << " " << n << " " << m
+    std::cout << dataset_name << " "
             << " " << niter 
             << " " << epsilon << " " << gamma
             << " " << threads_num << " " << tau;
@@ -1042,11 +1135,11 @@ int main()
     read_mat("./logs/rows_id_seq_mat.py.log", rows_id_seq);
     
     
-    auto b_ = Eigen::Map<Eigen::MatrixXd>(b.data(), b.rows(), b.cols());
-    auto x_prev_ = Eigen::Map<Eigen::MatrixXd>(x_prev.data(), x_prev.rows(), x_prev.cols());
-    auto x_ = Eigen::Map<Eigen::MatrixXd>(x.data(), x.rows(), x.cols());
-    auto P_ = Eigen::Map<Eigen::MatrixXd>(P.data(), P.rows(), P.cols());
-    auto Q_ = Eigen::Map<Eigen::MatrixXd>(Q.data(), Q.rows(), Q.cols());
+    auto b_ = fMMat(b.data(), b.rows(), b.cols());
+    auto x_prev_ = fMMat(x_prev.data(), x_prev.rows(), x_prev.cols());
+    auto x_ = fMMat(x.data(), x.rows(), x.cols());
+    auto P_ = fMMat(P.data(), P.rows(), P.cols());
+    auto Q_ = fMMat(Q.data(), Q.rows(), Q.cols());
     
     Eigen::Map<RowMajorArray> all_batches_ = Eigen::Map<RowMajorArray>(all_batches.data(), all_batches.rows(), all_batches.cols());
     auto rows_id_seq_ = Eigen::Map<Eigen::MatrixXi>(rows_id_seq.data(), rows_id_seq.rows(), rows_id_seq.cols());
@@ -1064,9 +1157,6 @@ int main()
     dataset_name,
     epsilon,
     gamma,
-    size,
-    n,
-    m,
     niter, 
     threads_num,
     extra_logs,
@@ -1084,8 +1174,37 @@ int main()
     std::cout << "sum py  : " << res_py.sum() << std::endl;
     std::cout << "diff sum_: " << (res_cpp - res_py).sum() << std::endl;
 
-    //accuracy_check();
+    accuracy_check();
 
     return 0;
 }
+
+int main1()
+{
+    if (true)
+    {
+        std::string filename = "./sparse_serialize.py";
+        std::string command = "python3 ";
+        command += filename;
+        system(command.c_str());
+    }
+
+    fSpMat fA_row;
+    parse_spmatrixf("./logs/test/Ar_sp.pack", fA_row);
+    print("./logs/test/fA_row_spmat.cpp.log", fA_row);
+
+    fSpMat fA_col;
+    parse_spmatrixf("./logs/test/Ac_sp.pack", fA_col);
+    print("./logs/test/fA_col_spmat.cpp.log", fA_col);
+
+    fSpMatMap mat_map;
+    parse_spmatrixf("./logs/test/Acr_map_sp.pack", mat_map);
+    print("./logs/test/fA12_col_spmat.cpp.log", mat_map[1][2]);
+    print("./logs/test/fA15_col_spmat.cpp.log", mat_map[1][5]);
+    print("./logs/test/fA54_col_spmat.cpp.log", mat_map[5][4]);
+    print("./logs/test/fA57_col_spmat.cpp.log", mat_map[5][7]);
+
+    return 0;
+}
+
 #endif
