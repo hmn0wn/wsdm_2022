@@ -2,6 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 from bsa_appnp.read_utils import utils_cpp
 import struct
+from timeit import default_timer as timer
 
 def serialize_sparse(file_path, mat, rewrite=True):
     indices = mat.indices
@@ -44,6 +45,7 @@ def serialize_sparse(file_path, mat, rewrite=True):
     return indices_np.size, indptr_np.size
 
 def serialize_sparse_map(file_path, mat_map):
+    start = timer()
     num = 0
     for batch_map in mat_map.values():
         num = num + len(batch_map)
@@ -60,6 +62,8 @@ def serialize_sparse_map(file_path, mat_map):
                 f.write(struct.pack("I", batch_id))
                 csc_val=value.tocsc()
             serialize_sparse(file_path, csc_val, rewrite=False)
+    end = timer()
+    print(f"py serialize_sparse_map time: {end-start} s")
 
 def sparse_matrix_test():
     row = np.array([0,0,0,1,2,2,2,2,3,4,4,4,5,5,5])

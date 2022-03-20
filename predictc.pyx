@@ -18,7 +18,8 @@ cdef class BSAcpp:
         uint niter, \
         uint threads_num, \
         uint extra_logs, \
-        uint tau):
+        uint tau,
+        uint optimal_batch_size):
         
         self.thisptr= new Bsa(\
         Map[MatrixXf](b), \
@@ -34,7 +35,8 @@ cdef class BSAcpp:
         niter, \
         threads_num, \
         extra_logs, \
-        tau)
+        tau, \
+        optimal_batch_size)
 
     def bsa_operation(self):
         return self.thisptr.bsa_operation()

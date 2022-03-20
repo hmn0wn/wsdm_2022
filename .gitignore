@@ -142,35 +142,28 @@ cython_debug/
 weights/
 
 bsa_appnp/data/*.npz
-
-
 bsa_appnp/data/*.npy
-*.npy
-.npy
 
+*.npy
 *.txt
 *.npy
-ED_pubmed_9858test.npy
-all_batches_pubmed_9858test.npy
-test.bmp
-test.csv
+*.bmp
+*.csv
 
 eigen3/*
 bsa
-gmon.out
-.gitignore
-profile.svg
-profile
+
+*.out
 packages
 typescript
+
 bit_math
-profile_brute
-profile_brute.svg
-profile_brutef
-profile_brutef.svg
-profile_bruteopt
-profile_bruteopt.svg
 bit_math.cpp
+
+gprof*
+*.svg
+*.pickle
+
 
 *.pack
 predictc.cpp

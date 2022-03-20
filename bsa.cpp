@@ -443,6 +443,7 @@ void read_sparse_matrixf(FILE *file, fSpMat &mat)
         //std::cout << "Read finished"<<std::endl;
     }
 
+
     std::vector<Eigen::Triplet<float>> triplets;
     triplets.reserve(indices_size);
     for(uint32_t i = 0; i < indptr_size-1; ++i)
@@ -543,6 +544,12 @@ void parse_spmatrixf(std::string mat_path, fSpMat &mat)
 
 void parse_spmatrixf(std::string mat_path, fSpMatMap &mat_map)
 {
+     float prep_t, cclock_t;
+    struct timeval t_start,t_end;
+    clock_t start_t, end_t;
+    gettimeofday(&t_start,NULL);
+    start_t = clock();
+
     //std::cout << BR50;
     //std::cout << mat_path << std::endl;
     FILE *file = fopen(mat_path.c_str(), "rb");
@@ -568,6 +575,15 @@ void parse_spmatrixf(std::string mat_path, fSpMatMap &mat_map)
         read_sparse_matrixf_fast(file, mat_map[row_id][batch_id]);
     }
     fclose(file);
+
+    end_t = clock();
+    cclock_t = (float)(end_t - start_t) / CLOCKS_PER_SEC;
+    gettimeofday(&t_end, NULL);
+    prep_t = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec)/1000000.0;
+
+    std::cout << BR50;
+    std::cout << "cpp parse_spmatrixf time: " << prep_t << " s" << std::endl;
+    std::cout << "cpp parse_spmatrixf clock time : " << cclock_t <<" s" << std::endl;
 }
 namespace predictc{
 
@@ -690,14 +706,14 @@ namespace predictc{
         std::string dataset_name_,
         float epsilon_, float gamma_, 
         uint niter_, uint threads_num_,
-        uint extra_logs_, uint tau_
+        uint extra_logs_, uint tau_, uint optimal_batch_size_
     ) : 
         b(b_), x_prev(x_prev_), x(x_), P(P_), Q(Q_), rows_id_seq(rows_id_seq_),
         all_batches(remove_negative(all_batches_)),
         dataset_name(dataset_name_),
         epsilon(epsilon_), gamma(gamma_),
         niter(niter_), threads_num(threads_num_),
-        extra_logs(extra_logs_), tau(tau_)
+        extra_logs(extra_logs_), tau(tau_), optimal_batch_size(optimal_batch_size_)
     {
         worker_func_begin_wall = true;
 		worker_func_end_wall = true;
@@ -724,7 +740,8 @@ namespace predictc{
         assert(dataset_name.size() > 0);
 
         std::string sp_name = std::string("bsa_appnp/data/") + dataset_name + std::string("_A_sp.pack");
-        std::string spmap_name = std::string("bsa_appnp/data/") + dataset_name + std::string("_A_map_sp.pack");
+        std::string spmap_name = std::string("bsa_appnp/data/") + dataset_name + std::string("_")
+        + std::to_string(optimal_batch_size) + std::string("_A_map_sp.pack");
         //parse_spmatrixf(sp_name, A);
         parse_spmatrixf(spmap_name, A_blocksf_map);
         
@@ -1010,9 +1027,17 @@ namespace predictc{
                 ths.push_back(std::thread(&Bsa::bsa_worker_all, this, worker_index, work_index));
 
                 //ths[worker_index].join();
+                if(worker_index % threads_num == 0)
+                {
+                    for (uint i = 0; i < ths.size(); ++i)
+                    {
+                        ths[i].join();
+                    }
+                    ths.clear();
+                }
             }
 
-            for (int i = 0; i < rows_id_seq.rows(); ++i)
+            for (uint i = 0; i < ths.size(); ++i)
             {
                 ths[i].join();
             }
@@ -1099,6 +1124,7 @@ int main()
     Eigen::MatrixXf P;
     Eigen::MatrixXf Q;
     uint tau;
+    uint optimal_batch_size;
 
     MatrixXiRowMajor all_batches;
 
@@ -1115,7 +1141,7 @@ int main()
     bsa_serialized >> dataset_name
     >> niter 
     >> epsilon >> gamma
-    >> threads_num >> tau;
+    >> threads_num >> tau >> optimal_batch_size;
     std::string log_dir("");
     bsa_serialized.close();
 
@@ -1124,7 +1150,7 @@ int main()
     std::cout << dataset_name << " "
             << " " << niter 
             << " " << epsilon << " " << gamma
-            << " " << threads_num << " " << tau;
+            << " " << threads_num << " " << tau << optimal_batch_size;
 
     read_mat("./logs/b_mat.py.log", b);
     read_mat("./logs/x_mat.py.log", x_prev);
@@ -1160,7 +1186,8 @@ int main()
     niter, 
     threads_num,
     extra_logs,
-    tau
+    tau,
+    optimal_batch_size
     );
     
     

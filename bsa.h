@@ -37,7 +37,8 @@ namespace predictc{
             uint niter_,
             uint threads_num_,
             uint extra_logs_,
-            uint tau_
+            uint tau_,
+            uint optimal_batch_size_
             );
 
         float bsa_operation();
@@ -81,6 +82,7 @@ namespace predictc{
         uint threads_num;
         uint extra_logs;
         uint tau;
+        uint optimal_batch_size;
 
         std::unordered_map<int64_t, float> A_map;
         std::unordered_map<int32_t, std::unordered_map<int32_t, float>> Af_map;

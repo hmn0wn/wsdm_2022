@@ -16,6 +16,8 @@ import gc
 from memory_profiler import profile, memory_usage
 import scipy.sparse as sp
 import struct
+from os.path import exists
+import pickle
 
 main_seed = 42
 tf.random.set_seed(0)
@@ -144,6 +146,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         Ah[Ah.nonzero()] = Ah[Ah.nonzero()] * alpha
 
     print("="*100)
+    
     if data_name == "test":
         indptr = np.array([0, 2, 3, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
@@ -199,6 +202,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
     
 
     n_butches = len(all_batches)
+    print(f"butches num: {n_butches}")
     max_len = len(max(all_batches, key=len))
     all_batches_squared = []
     all_batches_persent = all_batches[ : int(len(all_batches) * persent/100)]
@@ -258,7 +262,7 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
             rows_id_seq = rows_id_seq.transpose()
         
         with open("./logs/bsa_serialized.py.log", "w") as f:
-            f.write(f"{data_name} {niter} {epsilon} {gamma} {thread_num} {tau}")
+            f.write(f"{data_name} {niter} {epsilon} {gamma} {thread_num} {tau} {optimal_batch_size}")
 
         #print_matsp_i("./logs", f"A", A)
         utils_cpp.print_mat("./logs", "b", b)
@@ -269,7 +273,6 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
         #utils_cpp.print_mat("./logs", "all_batches", all_batches)
         utils_cpp.print_mat("./logs", "rows_id_seq", rows_id_seq)
         utils_cpp.print_mat("./logs", "all_batches_squared", all_batches_squared)
-
         #print(f"python: extra_logs={extra_logs}")
     else:
         rows_id_seq=utils_cpp.read_mat("./logs/rows_id_seq_mat.py.log")
@@ -279,17 +282,34 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
 
 
     linear_time = 0
+    
     A_map = dict()
-    for worker_index in range(rows_id_seq.shape[0]):
-        rows_id = worker_index
-        A_map[rows_id] = dict()
-        for work_index in range(tau):
-            batch_id = rows_id_seq[worker_index, work_index]
-            rows_ = all_batches[rows_id]
-            cols_ = all_batches[batch_id]
-            A_map[rows_id][batch_id] = A[rows_, :][:, cols_]
+    serialized_A_map_path = f"bsa_appnp/data/{data_name}_{optimal_batch_size}_A_map"
+    if exists(serialized_A_map_path + ".pickle"):
+        start = timer()
+        with open(serialized_A_map_path + ".pickle", "rb") as file:
+            A_map = pickle.load(file)
+        end = timer()
+        print(f"py A_mat deser time: {end-start} s")
+    else:
+        start = timer()
+        for worker_index in range(rows_id_seq.shape[0]):
+            rows_id = worker_index
+            A_map[rows_id] = dict()
+            for work_index in range(tau):
+                batch_id = rows_id_seq[worker_index, work_index]
+                if not (batch_id in A_map[rows_id]):
+                    rows_ = all_batches[rows_id]
+                    cols_ = all_batches[batch_id]
+                    A_map[rows_id][batch_id] = A[rows_, :][:, cols_]
+       
 
-    sparse_serialize.serialize_sparse_map(f"bsa_appnp/data/{data_name}_A_map", A_map)
+        sparse_serialize.serialize_sparse_map(serialized_A_map_path, A_map)
+        with open(serialized_A_map_path + ".pickle", "wb") as file:
+            pickle.dump(A_map, file)  
+        end = timer()
+        print(f"py A_mat create ser time: {end-start} s") 
+
 
     if bsa_type_cpp:
         py_bsa = BSAcpp(\
@@ -306,7 +326,8 @@ def run(seed, batch_size, btl_, niter, gamma, data_name,  load_check, dim, \
             niter, 
             thread_num,
             extra_logs,
-            tau)
+            tau,
+            optimal_batch_size)
         py_bsa.bsa_operation()
         accuracy_prev = accuracy_score(labels_test, np.argmax(x_prev[test_idx], axis=1))
         accuracy_ = accuracy_score(labels_test, np.argmax(x[test_idx], axis=1))
@@ -394,14 +415,14 @@ if __name__ == "__main__":
     gamma = 0.3
     alpha = 0.9
     seed = 0
-    tau = 1#100
+    tau = 25#100
     niter = 1
     dim = 64
     mepoch = 200#  200
     bsa_type_cpp = False
-    thread_num = 6
-    dataset_name = 'reddit'#'pubmed'
-    load_check = False
+    thread_num = 12
+    dataset_name = 'cora_full'#'pubmed'
+    load_check = True
     extra_logs = 0
     persent = 100
     

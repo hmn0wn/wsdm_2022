@@ -23,6 +23,7 @@ cdef extern from "bsa.h" namespace "predictc":
         uint, \
         uint, \
         uint, \
+        uint, \
         uint) except+
 
         float bsa_operation()
